@@ -12,10 +12,15 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.room_rental_backend.room_rental_application.components.CustomAccessDenied;
+import com.room_rental_backend.room_rental_application.components.CustomAuthEntryPoint;
+import com.room_rental_backend.room_rental_application.components.JwtAuthFilter;
 import com.room_rental_backend.room_rental_application.services.CustomUserDetailsService;
 
 import lombok.RequiredArgsConstructor;
@@ -26,6 +31,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SpringSecurity {
 
+    private final JwtAuthFilter jwtAuthFilter;
+
     private final CustomUserDetailsService userDetailsService;
 
     @Bean
@@ -33,6 +40,7 @@ public class SpringSecurity {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(request -> request
+                        .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/rooms/**").permitAll()
 
@@ -40,7 +48,17 @@ public class SpringSecurity {
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/landlord/**").hasRole("LANDLORD")
                         .anyRequest().authenticated())
-                .httpBasic(Customizer.withDefaults())
+
+                .httpBasic(AbstractHttpConfigurer::disable)
+
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+
+                .authenticationProvider(authenticationProvider())
+
+                .headers(header -> header.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
+
+                .exceptionHandling(exception -> exception.authenticationEntryPoint(new CustomAuthEntryPoint())
+                        .accessDeniedHandler(new CustomAccessDenied()))
                 .build();
     }
 

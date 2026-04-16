@@ -1,15 +1,13 @@
 package com.room_rental_backend.room_rental_application.models;
 
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
-import com.room_rental_backend.room_rental_application.enums.Roles;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import com.room_rental_backend.room_rental_application.enums.Roles;
 import com.room_rental_backend.room_rental_application.models.base_entity.BaseEntity;
 
 import jakarta.persistence.CascadeType;
@@ -65,7 +63,7 @@ public class Users extends BaseEntity implements UserDetails {
 
     @Builder.Default
     @Column(name = "is_verified", nullable = false)
-    private boolean verified = false;
+    private boolean verified = true;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private Landlord landlord;
@@ -78,6 +76,26 @@ public class Users extends BaseEntity implements UserDetails {
     @Override
     public String getUsername() {
         return email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return verified;
     }
 
 }
