@@ -10,4 +10,8 @@ import com.room_rental_backend.room_rental_application.models.Users;
 @Repository
 public interface UserRepository extends JpaRepository<Users, String> {
     Optional<Users> findByEmail(String email);
+
+    boolean existsByEmail(String email);
+
+    boolean existsByPhoneNumber(String phoneNumber);
 }
