@@ -15,10 +15,11 @@ public class AuthMapper {
 
     private final PasswordEncoder passwordEncoder;
 
-    public AuthResponse toAuthResponse(Users user, String token) {
+    public AuthResponse toAuthResponse(Users user, String token, String refreshToken) {
         AuthResponse response = new AuthResponse(
                 user.getId(),
                 token,
+                refreshToken,
                 user.getRoles(),
                 user.getFname(),
                 user.getLname(),
