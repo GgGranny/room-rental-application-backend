@@ -9,7 +9,9 @@ import java.util.stream.Collectors;
 
 import javax.crypto.SecretKey;
 
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -26,11 +28,17 @@ public class JwtService {
     @Value("${access.token.expiration}")
     private long accessTokenExpiration;
 
+    @PostConstruct
+    public void init() {
+        System.out.println("secret: " + secret);
+        System.out.println("expiration time: " + accessTokenExpiration);
+    }
+
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
 
         claims.put("roles", userDetails.getAuthorities().stream()
-                .map(authority -> authority.getAuthority())
+                .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList()));
 
         return Jwts.builder()

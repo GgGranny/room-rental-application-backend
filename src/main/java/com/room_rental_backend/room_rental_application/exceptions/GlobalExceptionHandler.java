@@ -37,9 +37,7 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex) {
         Map<String, String> response = new HashMap<>();
         ex.getBindingResult().getFieldErrors()
-                .forEach(error ->
-                        response.put(error.getField(), error.getDefaultMessage()
-                        ));
+                .forEach(error -> response.put(error.getField(), error.getDefaultMessage()));
         return ResponseEntity.status(400).body(response);
     }
 
@@ -78,5 +76,25 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 null,
                 HttpStatus.CONFLICT);
+    }
+
+    // Handles the Otp Token not found exception
+    @ExceptionHandler(TokenNotFoundException.class)
+    public ResponseEntity<ApiResponse<Object>> handleTokenNotFoundException(TokenNotFoundException ex) {
+        logger.warn("{}", ex.getMessage());
+        return GlobalResponseHandler.error(
+                ex.getMessage(),
+                null,
+                HttpStatus.NOT_FOUND);
+    }
+
+    // Handles token already exiration exception
+    @ExceptionHandler(TokenExpiredException.class)
+    public ResponseEntity<ApiResponse<Object>> handleTokenExiredException(TokenExpiredException ex) {
+        logger.warn("{}", ex.getMessage());
+        return GlobalResponseHandler.error(
+                ex.getMessage(),
+                null,
+                HttpStatus.BAD_REQUEST);
     }
 }
