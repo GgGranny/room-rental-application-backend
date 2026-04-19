@@ -1,5 +1,7 @@
 package com.room_rental_backend.room_rental_application.config;
 
+import com.room_rental_backend.room_rental_application.components.OAuth2SuccessHandler;
+import com.room_rental_backend.room_rental_application.services.CustomOAuth2UserService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -22,6 +24,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import com.room_rental_backend.room_rental_application.components.CustomAccessDenied;
 import com.room_rental_backend.room_rental_application.components.CustomAuthEntryPoint;
 import com.room_rental_backend.room_rental_application.components.JwtAuthFilter;
+import com.room_rental_backend.room_rental_application.components.OAuth2FailureHandler;
 import com.room_rental_backend.room_rental_application.services.CustomUserDetailsService;
 
 import lombok.RequiredArgsConstructor;
@@ -36,6 +39,12 @@ public class SpringSecurity {
 
     private final CustomUserDetailsService userDetailsService;
 
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
+
+    private final OAuth2FailureHandler oAuth2FailureHandler;
+
+    private final CustomOAuth2UserService customOAuth2UserService;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
@@ -45,14 +54,27 @@ public class SpringSecurity {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/rooms/**").permitAll()
 
+                        .requestMatchers("/oauth2/**").permitAll()
+                        .requestMatchers("/login/oauth2/**").permitAll()
+
                         .requestMatchers("/api/v1/user/**").hasRole("USER")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/landlord/**").hasRole("LANDLORD")
                         .anyRequest().authenticated())
 
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+
+                .formLogin(Customizer.withDefaults())
 
                 .httpBasic(AbstractHttpConfigurer::disable)
+
+                .oauth2Login(oauth2 -> oauth2
+                        .authorizationEndpoint(endpoint -> endpoint
+                                .baseUri("/oauth2/authorize"))
+                        .redirectionEndpoint(endpoint -> endpoint.baseUri("/login/oauth2/code/*"))
+                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                        .successHandler(oAuth2SuccessHandler)
+                        .failureHandler(oAuth2FailureHandler))
 
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
 
@@ -60,8 +82,9 @@ public class SpringSecurity {
 
                 .headers(header -> header.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
 
-                .exceptionHandling(exception -> exception.authenticationEntryPoint(new CustomAuthEntryPoint())
-                        .accessDeniedHandler(new CustomAccessDenied()))
+                // .exceptionHandling(exception -> exception.authenticationEntryPoint(new
+                // CustomAuthEntryPoint())
+                // .accessDeniedHandler(new CustomAccessDenied()))
                 .build();
     }
 

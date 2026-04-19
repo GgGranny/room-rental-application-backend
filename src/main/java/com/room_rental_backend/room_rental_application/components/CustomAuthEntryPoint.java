@@ -27,7 +27,6 @@ public class CustomAuthEntryPoint implements AuthenticationEntryPoint {
                 "error", "Unauthorized",
                 "message", "Invalid username or password",
                 "path", request.getServletPath());
-
         new ObjectMapper().writeValue(response.getOutputStream(), body);
     }
 

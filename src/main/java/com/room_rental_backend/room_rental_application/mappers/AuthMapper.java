@@ -24,7 +24,8 @@ public class AuthMapper {
                 user.getFname(),
                 user.getLname(),
                 user.getEmail(),
-                user.getDateOfBirth());
+                user.getDateOfBirth(),
+                user.isVerified());
         return response;
     }
 
