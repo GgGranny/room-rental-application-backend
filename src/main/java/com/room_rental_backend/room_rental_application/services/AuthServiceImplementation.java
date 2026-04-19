@@ -74,7 +74,7 @@ public class AuthServiceImplementation implements AuthService {
         activationTokenRepository.save(activationToken);
 
         String activationUrl = "http://localhost:8000/api/v1/auth/activate?token=" + otp;
-        publisUserRegisterEvent(savedUser, activationUrl);
+        // publisUserRegisterEvent(savedUser, activationUrl);
         return authMapper.toAuthResponse(savedUser, null, null);
     }
 

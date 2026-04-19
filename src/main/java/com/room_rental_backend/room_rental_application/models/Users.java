@@ -34,13 +34,13 @@ import lombok.Setter;
 @Builder
 public class Users extends BaseEntity implements UserDetails {
 
-    @Column(name = "password", nullable = false)
-    private String password;
+    @Column(name = "password")
+    private String password; // nullable true, to for OAuth auth
 
     @Column(name = "email", unique = true, nullable = false, length = 100)
     private String email;
 
-    @Column(name = "phone_number", unique = true, nullable = false, length = 10)
+    @Column(name = "phone_number", unique = true, length = 10)
     private String phoneNumber;
 
     @Enumerated(EnumType.STRING)
@@ -50,10 +50,10 @@ public class Users extends BaseEntity implements UserDetails {
     @Column(name = "first_name", nullable = false, length = 50)
     private String fname;
 
-    @Column(name = "last_name", nullable = false, length = 50)
+    @Column(name = "last_name", length = 50)
     private String lname;
 
-    @Column(name = "date_of_birth", nullable = false)
+    @Column(name = "date_of_birth")
     private String dateOfBirth;
 
     @Column(name = "profile_picture_url")
@@ -61,6 +61,12 @@ public class Users extends BaseEntity implements UserDetails {
 
     @Column(name = "kyc_url")
     private String kycUrl;
+
+    @Column(name = "provider", length = 50)
+    private String provider;
+
+    @Column(name = "provider_id")
+    private String providerId;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private RefreshToken refreshToken;
@@ -71,7 +77,7 @@ public class Users extends BaseEntity implements UserDetails {
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default
-    private boolean isActive = false;
+    private boolean isActive = true; // for develepment purpose only true
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private Landlord landlord;
