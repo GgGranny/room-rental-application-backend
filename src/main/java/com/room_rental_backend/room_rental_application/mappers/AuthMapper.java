@@ -31,13 +31,8 @@ public class AuthMapper {
 
     public Users toUsers(RegisterUserRequestDtos requestDtos) {
         Users user = new Users();
-        user.setFname(requestDtos.fname());
-        user.setLname(requestDtos.lname());
         user.setEmail(requestDtos.email().trim().toLowerCase());
         user.setPassword(passwordEncoder.encode(requestDtos.password()));
-        user.setRoles(requestDtos.role());
-        user.setDateOfBirth(requestDtos.dob());
-        user.setPhoneNumber(requestDtos.phoneNumber());
         return user;
     }
 }

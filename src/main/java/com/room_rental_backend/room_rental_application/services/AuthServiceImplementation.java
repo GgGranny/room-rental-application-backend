@@ -55,12 +55,12 @@ public class AuthServiceImplementation implements AuthService {
     public AuthResponse register(RegisterUserRequestDtos request) {
 
         String email = request.email().trim().toLowerCase();
-        String phoneNumber = request.phoneNumber().trim();
+        // String phoneNumber = request.phoneNumber().trim();
+        // if (userRepository.existsByPhoneNumber(phoneNumber)) {
+        // throw new PhoneNumberAlreadyExists("Phone number already exists");
+        // }
         if (userRepository.existsByEmail(email)) {
             throw new EmailAlreadyExistsException("Email already exists");
-        }
-        if (userRepository.existsByPhoneNumber(phoneNumber)) {
-            throw new PhoneNumberAlreadyExists("Phone number already exists");
         }
         Users newUser = authMapper.toUsers(request);
         Users savedUser = userRepository.save(newUser);
