@@ -1,24 +1,35 @@
 package com.room_rental_backend.room_rental_application.services;
 
+import java.security.Principal;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.time.LocalDate;
 
+import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
+import com.room_rental_backend.room_rental_application.components.CustomAuthEntryPoint;
+import com.room_rental_backend.room_rental_application.dtos.requestDtos.CompleteUserProfileRequest;
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.RefreshTokenRequest;
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.RegisterUserRequestDtos;
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.UserLoginRequestDto;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.AuthResponse;
+import com.room_rental_backend.room_rental_application.enums.Roles;
 import com.room_rental_backend.room_rental_application.events.UserRegisterEvent;
 import com.room_rental_backend.room_rental_application.exceptions.EmailAlreadyExistsException;
 import com.room_rental_backend.room_rental_application.exceptions.PhoneNumberAlreadyExists;
 import com.room_rental_backend.room_rental_application.exceptions.TokenExpiredException;
 import com.room_rental_backend.room_rental_application.exceptions.TokenNotFoundException;
+import com.room_rental_backend.room_rental_application.exceptions.UnauthorizedException;
 import com.room_rental_backend.room_rental_application.exceptions.UserNotFoundException;
 import com.room_rental_backend.room_rental_application.interfaces.AuthService;
 import com.room_rental_backend.room_rental_application.interfaces.RefreshTokenService;
@@ -147,6 +158,61 @@ public class AuthServiceImplementation implements AuthService {
 
         return authMapper.toAuthResponse(user, newJwtToken, refreshTokenReq);
 
+    }
+
+    @Override
+    public AuthResponse completeUserProfile(CompleteUserProfileRequest request) {
+
+        Users user = userRepository.findById(request.userId())
+                .orElseThrow(() -> new UserNotFoundException("User not found for id: " + request.userId()));
+
+        // Update fields
+        user.setRoles(request.role());
+        user.setFname(request.fname());
+        user.setLname(request.lname());
+        user.setDateOfBirth(request.dob());
+
+        Users savedUser = userRepository.save(user);
+
+        // Generate new tokens with role
+        String jwtToken = jwtService.generateToken(savedUser);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(savedUser);
+
+        return authMapper.toAuthResponse(savedUser, jwtToken, refreshToken.getToken());
+    }
+
+    // check if user profile setup is complete
+    @Override
+    public boolean isProfileCompleted() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        if (auth == null || !auth.isAuthenticated()) {
+            return false;
+        }
+
+        Object principal = auth.getPrincipal();
+        String email;
+        if (principal instanceof UserDetails userDetails) {
+            email = userDetails.getUsername();
+        } else if (principal instanceof Users user) {
+            email = user.getEmail();
+        } else {
+            return false;
+        }
+
+        System.out.println("email: " + email);
+
+        Users user = userRepository.findByEmail(email)
+                .orElse(null);
+
+        return user.getRoles() != null
+                && hasText(user.getFname())
+                && hasText(user.getLname())
+                && user.getDateOfBirth() != null;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
 }

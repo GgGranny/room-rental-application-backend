@@ -1,6 +1,8 @@
 package com.room_rental_backend.room_rental_application.components;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -60,18 +62,14 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 response.setContentType("application/json");
                 response.setStatus(HttpServletResponse.SC_OK);
                 response.setCharacterEncoding("UTF-8");
-                AuthResponse authResponse = AuthResponse.builder()
-                                .fname(user.getFname())
-                                .lname(user.getLname())
-                                .email(user.getEmail())
-                                .Dob(user.getDateOfBirth())
-                                .refreshToken(refreshToken)
-                                .token(jwtToken)
-                                .role(user.getRoles())
-                                .isVerifird(user.isVerified())
-                                .build();
-                ApiResponse<AuthResponse> res = new ApiResponse<>();
-                res.setData(authResponse);
+                Map<String, Object> responseBuilder = new HashMap<>();
+                responseBuilder.put("token", jwtToken);
+                responseBuilder.put("refreshToken", refreshToken);
+                responseBuilder.put("userId", user.getId());
+                responseBuilder.put("isVerified", user.isVerified());
+
+                ApiResponse<Map<String, Object>> res = new ApiResponse<>();
+                res.setData(responseBuilder);
                 res.setMessage("Login successful");
                 res.setSuccess(true);
 
