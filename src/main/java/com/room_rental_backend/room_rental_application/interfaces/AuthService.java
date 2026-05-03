@@ -1,5 +1,6 @@
 package com.room_rental_backend.room_rental_application.interfaces;
 
+import com.room_rental_backend.room_rental_application.dtos.requestDtos.CompleteUserProfileRequest;
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.RefreshTokenRequest;
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.RegisterUserRequestDtos;
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.UserLoginRequestDto;
@@ -13,4 +14,8 @@ public interface AuthService {
     AuthResponse activateUser(String userId);
 
     AuthResponse refreshToken(RefreshTokenRequest refreshToken);
+
+    AuthResponse completeUserProfile(CompleteUserProfileRequest request);
+
+    boolean isProfileCompleted();
 }

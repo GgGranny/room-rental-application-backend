@@ -1,10 +1,15 @@
 package com.room_rental_backend.room_rental_application.mappers;
 
+import java.lang.ProcessBuilder.Redirect;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.RegisterUserRequestDtos;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.AuthResponse;
+import com.room_rental_backend.room_rental_application.dtos.responseDtos.RedirectUrl;
+import com.room_rental_backend.room_rental_application.enums.Roles;
 import com.room_rental_backend.room_rental_application.models.Users;
 
 import lombok.RequiredArgsConstructor;
@@ -31,13 +36,16 @@ public class AuthMapper {
 
     public Users toUsers(RegisterUserRequestDtos requestDtos) {
         Users user = new Users();
-        user.setFname(requestDtos.fname());
-        user.setLname(requestDtos.lname());
         user.setEmail(requestDtos.email().trim().toLowerCase());
         user.setPassword(passwordEncoder.encode(requestDtos.password()));
-        user.setRoles(requestDtos.role());
-        user.setDateOfBirth(requestDtos.dob());
-        user.setPhoneNumber(requestDtos.phoneNumber());
         return user;
+    }
+
+    public RedirectUrl toRedirectUrl(String pageName, String url, HttpStatus code) {
+        return RedirectUrl.builder()
+                .code(code)
+                .url(url)
+                .pageName(pageName)
+                .build();
     }
 }
