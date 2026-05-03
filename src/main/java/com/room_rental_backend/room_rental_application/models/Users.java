@@ -1,6 +1,7 @@
 package com.room_rental_backend.room_rental_application.models;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.security.core.GrantedAuthority;
@@ -44,10 +45,10 @@ public class Users extends BaseEntity implements UserDetails {
     private String phoneNumber;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false)
+    @Column(name = "role")
     private Roles roles;
 
-    @Column(name = "first_name", nullable = false, length = 50)
+    @Column(name = "first_name", length = 50)
     private String fname;
 
     @Column(name = "last_name", length = 50)
@@ -68,7 +69,7 @@ public class Users extends BaseEntity implements UserDetails {
     @Column(name = "provider_id")
     private String providerId;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
     private RefreshToken refreshToken;
 
     @Builder.Default
@@ -87,6 +88,9 @@ public class Users extends BaseEntity implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
+        if (roles == null) {
+            return Collections.emptyList();
+        }
         return List.of(new SimpleGrantedAuthority(roles.name()));
     }
 

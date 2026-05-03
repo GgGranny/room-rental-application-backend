@@ -7,9 +7,13 @@ public interface RefreshTokenService {
 
     String generateRefreshToken();
 
-    boolean isRefreshTokenExpired(String refreshToken);
-
-    RefreshToken createRefreshToken(Users activatedUser);
+    RefreshToken createRefreshToken(Users user);
 
     RefreshToken validateToken(String token);
+
+    boolean isRefreshTokenExpired(String token);
+
+    void deleteToken(String token);
+
+    void deleteAllTokensForUser(Users user);
 }

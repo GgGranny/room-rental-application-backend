@@ -51,17 +51,14 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     }
 
     private Users registerNewUser(String provider, OAuth2UserInfo userInfo) {
-        String[] nameParts = userInfo.getName().split(" ", 2);
 
         Users user = Users.builder()
                 .email(userInfo.getEmail())
-                .fname(nameParts[0])
-                .lname(nameParts.length > 1 ? nameParts[1] : "")
                 .profilePictureUrl(userInfo.getImageUrl())
                 .provider(provider)
                 .providerId(userInfo.getId())
-                .roles(Roles.ROLE_USER) // default role
-                .verified(true) // OAuth users are pre-verified
+                .verified(false)
+                .isActive(true)
                 .build();
 
         return userRepository.save(user);

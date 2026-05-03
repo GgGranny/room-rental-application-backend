@@ -97,4 +97,15 @@ public class GlobalExceptionHandler {
                 null,
                 HttpStatus.BAD_REQUEST);
     }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<Map<String, Object>> handelUnauthorizedException(UnauthorizedException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", 401);
+        response.put("error", "Unauthorized");
+        response.put("message", ex.getMessage());
+        response.put("timestamp", System.currentTimeMillis());
+
+        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+    }
 }
