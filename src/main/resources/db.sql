@@ -1,2 +1,0 @@
-
--- Create User table
