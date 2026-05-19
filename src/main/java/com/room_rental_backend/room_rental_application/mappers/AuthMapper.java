@@ -1,7 +1,5 @@
 package com.room_rental_backend.room_rental_application.mappers;
 
-import java.lang.ProcessBuilder.Redirect;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -9,7 +7,6 @@ import org.springframework.stereotype.Component;
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.RegisterUserRequestDtos;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.AuthResponse;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.RedirectUrl;
-import com.room_rental_backend.room_rental_application.enums.Roles;
 import com.room_rental_backend.room_rental_application.models.Users;
 
 import lombok.RequiredArgsConstructor;

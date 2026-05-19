@@ -1,10 +1,7 @@
 package com.room_rental_backend.room_rental_application.config;
 
-import com.room_rental_backend.room_rental_application.components.OAuth2SuccessHandler;
-import com.room_rental_backend.room_rental_application.services.CustomOAuth2UserService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -25,6 +22,8 @@ import com.room_rental_backend.room_rental_application.components.CustomAccessDe
 import com.room_rental_backend.room_rental_application.components.CustomAuthEntryPoint;
 import com.room_rental_backend.room_rental_application.components.JwtAuthFilter;
 import com.room_rental_backend.room_rental_application.components.OAuth2FailureHandler;
+import com.room_rental_backend.room_rental_application.components.OAuth2SuccessHandler;
+import com.room_rental_backend.room_rental_application.services.CustomOAuth2UserService;
 import com.room_rental_backend.room_rental_application.services.CustomUserDetailsService;
 
 import lombok.RequiredArgsConstructor;
@@ -45,6 +44,10 @@ public class SpringSecurity {
 
     private final CustomOAuth2UserService customOAuth2UserService;
 
+    private final CustomAuthEntryPoint customAuthEntryPoint;
+
+    private final CustomAccessDenied customAccessDenied;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
@@ -60,6 +63,7 @@ public class SpringSecurity {
                         .requestMatchers("/api/v1/user/**").hasRole("USER")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/landlord/**").hasRole("LANDLORD")
+                        .requestMatchers("/api/v1/kyc/**").hasAnyRole("USER")
                         .anyRequest().authenticated())
 
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
@@ -82,9 +86,8 @@ public class SpringSecurity {
 
                 .headers(header -> header.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
 
-                // .exceptionHandling(exception -> exception.authenticationEntryPoint(new
-                // CustomAuthEntryPoint())
-                // .accessDeniedHandler(new CustomAccessDenied()))
+                .exceptionHandling(exception -> exception.authenticationEntryPoint(customAuthEntryPoint)
+                        .accessDeniedHandler(customAccessDenied))
                 .build();
     }
 

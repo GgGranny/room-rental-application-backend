@@ -3,17 +3,16 @@ package com.room_rental_backend.room_rental_application.exceptions;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.catalina.connector.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
-import com.room_rental_backend.room_rental_application.dtos.responseDtos.AuthResponse;
 import com.room_rental_backend.room_rental_application.responseHandler.ApiResponse;
 import com.room_rental_backend.room_rental_application.responseHandler.GlobalResponseHandler;
 
@@ -107,5 +106,33 @@ public class GlobalExceptionHandler {
         response.put("timestamp", System.currentTimeMillis());
 
         return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(FileUploadException.class)
+    public ResponseEntity<ApiResponse<Object>> handleFileUploadException(FileUploadException ex) {
+        logger.warn("{}", ex.getMessage());
+        return GlobalResponseHandler.error(
+                ex.getMessage(),
+                null,
+                HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(KycFailedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleKycFailedException(KycFailedException ex) {
+        logger.warn("{}", ex.getMessage());
+        return GlobalResponseHandler.error(
+                ex.getMessage(),
+                null,
+                HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler({ IllegalArgumentException.class, MissingServletRequestPartException.class,
+            MultipartException.class })
+    public ResponseEntity<ApiResponse<Object>> handleBadRequest(Exception ex) {
+        logger.warn("{}", ex.getMessage());
+        return GlobalResponseHandler.error(
+                ex.getMessage(),
+                null,
+                HttpStatus.BAD_REQUEST);
     }
 }

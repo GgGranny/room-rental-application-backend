@@ -5,9 +5,9 @@ import jakarta.validation.constraints.NotNull;
 
 public record RegisterUserRequestDtos(
 
-                @NotNull(message = "email is required") @Email(message = "invalid email format") String email,
+        @NotNull(message = "email is required") @Email(message = "invalid email format") String email,
 
-                @NotNull(message = "password is required") String password
+        @NotNull(message = "password is required") String password
 
 // @Size(min = 10, max = 10, message = "phone number shound be of 10 digits")
 // @NotNull(message = "phone number is required") String phoneNumber,

@@ -60,8 +60,8 @@ public class Users extends BaseEntity implements UserDetails {
     @Column(name = "profile_picture_url")
     private String profilePictureUrl;
 
-    @Column(name = "kyc_url")
-    private String kycUrl;
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    private Kyc kycUrl;
 
     @Column(name = "provider", length = 50)
     private String provider;
