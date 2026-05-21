@@ -1,6 +1,7 @@
 package com.room_rental_backend.room_rental_application.services;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,9 +9,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.DocumentDataReqeust;
@@ -33,14 +35,16 @@ import jakarta.annotation.PostConstruct;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import tools.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class KycSerciveImplementation implements KycService {
 
     @Value("${file.kyc.folder}")
-    private String doumentContainer;
+    private String documentContainer;
 
     private final KycRepository kycRepository;
 
@@ -57,16 +61,18 @@ public class KycSerciveImplementation implements KycService {
     private final UserMapper userMapper;
 
     @PostConstruct()
-    void init() {
-        File file = new File(doumentContainer);
-        if (!file.exists()) {
+    void init() throws IOException {
+        File file = new File(documentContainer);
+        try {
+            if (file.exists()) {
+                FileUtils.deleteDirectory(file);
+            }
             boolean success = file.mkdirs();
             if (success) {
-                System.out.println(doumentContainer + " folder successfully created");
-            } else {
-                System.out.println(doumentContainer + " folder failed to create");
+                System.out.println(documentContainer + " folder successfully created");
             }
-
+        } catch (IOException e) {
+            throw new IOException("Fialed to create the folder");
         }
     }
 
@@ -89,7 +95,6 @@ public class KycSerciveImplementation implements KycService {
                 .selfieUrl(selfieUrl)
                 .build();
         kycData.setDocument(documentDataReqeust);
-
         Users kycOwner = userRepository.findById(kycData.getCustomerId())
                 .orElseThrow(() -> new UserNotFoundException("User  not found for id: " + kycData.getCustomerId()));
 
@@ -100,12 +105,10 @@ public class KycSerciveImplementation implements KycService {
         Kyc savedKyc = kycRepository.save(newKyc);
         if (savedKyc != null) {
             KycResponse response = kycMapper.toResponse(savedKyc);
-            response.setHttpStatus(HttpStatus.CREATED);
             return response;
         }
         return KycResponse.builder()
                 .customerId(kycOwner.getId())
-                .httpStatus(HttpStatus.BAD_REQUEST)
                 .build();
     }
 
@@ -154,16 +157,35 @@ public class KycSerciveImplementation implements KycService {
         return kycMapper.toResponse(response);
     }
 
+    @Transactional
     @Override
-    public Map<String, String> deleteKyc(int kycId) {
+    public void deleteKyc(Integer kycId) {
+        log.info("kyc id {} to delete ", kycId);
         Kyc kyc = kycRepository.findById(kycId)
                 .orElseThrow(() -> new KycFailedException("No Kyc for id: " + String.valueOf(kycId)));
-        kycRepository.deleteById(kyc.getId());
-        Map<String, String> response = new HashMap<>();
-        response.put("kycId", String.valueOf(kycId));
-        return response;
+
+        Users user = kyc.getUser();
+        if (user != null) {
+            user.setKycUrl(null);
+        }
+
+        Stream.of(
+                kyc.getFrontImageUrl(),
+                kyc.getBackImageUrl(),
+                kyc.getSelfieUrl())
+                .filter(path -> path != null && !path.isEmpty())
+                .forEach(path -> {
+                    try {
+                        fileService.deleteFile(path);
+                    } catch (RuntimeException ex) {
+                        log.warn("Failed to delete KYC file {} for kyc id {}", path, kycId, ex);
+                    }
+                });
+
+        kycRepository.delete(kyc);
     }
 
+    // Helper methods to upload optional files and read/validate KYC data
     private String uploadOptionalFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             return null;
@@ -171,6 +193,7 @@ public class KycSerciveImplementation implements KycService {
         return fileService.uploadFile(file);
     }
 
+    // Helper methods to read and validate KYC data from JSON string
     private KycRequest readAndValidateKycData(String kycDataJson) {
         try {
             KycRequest kycData = objectMapper.readValue(kycDataJson, KycRequest.class);
@@ -185,5 +208,18 @@ public class KycSerciveImplementation implements KycService {
         } catch (Exception ex) {
             throw new IllegalArgumentException("kycData must be valid JSON");
         }
+    }
+
+    @Override
+    public KycResponse updateKycStatus(Integer kycId, String status) {
+        Kyc kyc = kycRepository.findById(kycId)
+                .orElseThrow(() -> new KycFailedException("No Kyc for id: " + String.valueOf(kycId)));
+        KycStatus kycStatus = Stream.of(KycStatus.values())
+                .filter(s -> s.name().equalsIgnoreCase(status))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Invalid KYC status: " + status));
+        kyc.setStatus(kycStatus);
+        Kyc savedKyc = kycRepository.save(kyc);
+        return kycMapper.toResponse(savedKyc);
     }
 }

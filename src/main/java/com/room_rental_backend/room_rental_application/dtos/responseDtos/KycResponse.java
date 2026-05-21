@@ -20,7 +20,6 @@ import lombok.NoArgsConstructor;
 public class KycResponse {
     private int kycId;
     private String customerId;
-    private HttpStatus httpStatus;
     private KycStatus kycStatus;
     private LocalDateTime submittedAt;
 

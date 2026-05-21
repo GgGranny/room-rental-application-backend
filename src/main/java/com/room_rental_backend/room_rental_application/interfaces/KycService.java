@@ -15,5 +15,7 @@ public interface KycService {
 
     KycResponse updateKyc(String request, MultipartFile frontImage, MultipartFile backImage, MultipartFile selfie);
 
-    Map<String, String> deleteKyc(int kycId);
+    void deleteKyc(Integer kycId);
+
+    KycResponse updateKycStatus(Integer kycId, String status);
 }
