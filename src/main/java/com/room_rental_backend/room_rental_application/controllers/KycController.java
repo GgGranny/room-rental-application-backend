@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -62,14 +63,23 @@ public class KycController {
                 HttpStatus.OK);
     }
 
-    @DeleteMapping("/d/{kycId}")
-    public ResponseEntity<ApiResponse<Map<String, String>>> removeKyc(@PathVariable("kycId") Integer id) {
-        Map<String, String> response = kycSerciveImplementation.deleteKyc(id);
-        if (response != null) {
-            return GlobalResponseHandler.success("Kyc deleted successfully", response, HttpStatus.OK);
-        } else {
-            return GlobalResponseHandler.error("Failed to delete kyc", null, HttpStatus.BAD_REQUEST);
-        }
+    @DeleteMapping("/{kycId}")
+    public ResponseEntity<ApiResponse<Void>> removeKyc(@PathVariable("kycId") Integer kycId) {
+        kycSerciveImplementation.deleteKyc(kycId);
+        return GlobalResponseHandler.success(
+                "Kyc deleted successfully",
+                null,
+                HttpStatus.OK);
     }
 
+    @PatchMapping("/{kycId}/{status}")
+    public ResponseEntity<ApiResponse<KycResponse>> updateKycStatus(
+            @PathVariable("kycId") Integer kycId,
+            @PathVariable("status") String status) {
+        KycResponse response = kycSerciveImplementation.updateKycStatus(kycId, status);
+        return GlobalResponseHandler.success(
+                "Kyc status updated successfully",
+                response,
+                HttpStatus.OK);
+    }
 }
