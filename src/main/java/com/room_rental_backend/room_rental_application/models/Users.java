@@ -86,6 +86,9 @@ public class Users extends BaseEntity implements UserDetails {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private ActivationToken activationToken;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<ImageMetadata> imageData;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (roles == null) {
