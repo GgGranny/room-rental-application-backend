@@ -18,16 +18,19 @@ import org.springframework.web.multipart.MultipartFile;
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.DocumentDataReqeust;
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.KycRequest;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.KycResponse;
+import com.room_rental_backend.room_rental_application.enums.ImageMetadataTypes;
 import com.room_rental_backend.room_rental_application.enums.KycStatus;
 import com.room_rental_backend.room_rental_application.exceptions.KycFailedException;
 import com.room_rental_backend.room_rental_application.exceptions.UserNotFoundException;
 import com.room_rental_backend.room_rental_application.interfaces.FileService;
 import com.room_rental_backend.room_rental_application.interfaces.KycService;
+import com.room_rental_backend.room_rental_application.interfaces.SupabaseFileStorageService;
 import com.room_rental_backend.room_rental_application.interfaces.UserService;
 import com.room_rental_backend.room_rental_application.mappers.KycMapper;
 import com.room_rental_backend.room_rental_application.mappers.UserMapper;
 import com.room_rental_backend.room_rental_application.models.Kyc;
 import com.room_rental_backend.room_rental_application.models.Users;
+import com.room_rental_backend.room_rental_application.repositories.ImageMetadataRepository;
 import com.room_rental_backend.room_rental_application.repositories.KycRepository;
 import com.room_rental_backend.room_rental_application.repositories.UserRepository;
 
@@ -55,10 +58,16 @@ public class KycSerciveImplementation implements KycService {
     private final UserRepository userRepository;
 
     private final ObjectMapper objectMapper;
+
     private final Validator validator;
 
     private final UserService userService;
+
     private final UserMapper userMapper;
+
+    private final SupabaseFileStorageService supabaseFileStorageService;
+
+    private final ImageMetadataRepository imageMetadataRepository;
 
     @PostConstruct()
     void init() throws IOException {
@@ -84,9 +93,15 @@ public class KycSerciveImplementation implements KycService {
             throw new KycFailedException("KYC has already been submitted for this user");
         }
 
-        String frontImageUrl = fileService.uploadFile(frontImage);
-        String backImageUrl = uploadOptionalFile(backImage);
-        String selfieUrl = fileService.uploadFile(selfie);
+        // String frontImageUrl = fileService.uploadFile(frontImage);
+        // String backImageUrl = uploadOptionalFile(backImage);
+        // String selfieUrl = fileService.uploadFile(selfie);
+
+        String frontImageUrl = supabaseFileStorageService.uploadFile(frontImage, "kyc", "private", "KYC").getUrl();
+        String backImageUrl = backImage != null && !backImage.isEmpty()
+                ? supabaseFileStorageService.uploadFile(backImage, "kyc", "private", "KYC").getUrl()
+                : null;
+        String selfieUrl = supabaseFileStorageService.uploadFile(selfie, "kyc", "private", "KYC").getUrl();
 
         DocumentDataReqeust documentDataReqeust = DocumentDataReqeust.builder()
                 .documentType(kycData.getDocument().getDocumentType())
@@ -168,20 +183,21 @@ public class KycSerciveImplementation implements KycService {
         if (user != null) {
             user.setKycUrl(null);
         }
-
-        Stream.of(
-                kyc.getFrontImageUrl(),
-                kyc.getBackImageUrl(),
-                kyc.getSelfieUrl())
-                .filter(path -> path != null && !path.isEmpty())
-                .forEach(path -> {
-                    try {
-                        fileService.deleteFile(path);
-                    } catch (RuntimeException ex) {
-                        log.warn("Failed to delete KYC file {} for kyc id {}", path, kycId, ex);
-                    }
-                });
-
+        List<Long> kycMetadataIds = imageMetadataRepository.getAllKycMetadatasIds(kyc.getUser().getId(),
+                ImageMetadataTypes.KYC);
+        kycMetadataIds.forEach(id -> supabaseFileStorageService.deleteFile(id, "private"));
+        // Stream.of(
+        // kyc.getFrontImageUrl(),
+        // kyc.getBackImageUrl(),
+        // kyc.getSelfieUrl())
+        // .filter(path -> path != null && !path.isEmpty())
+        // .forEach(path -> {
+        // try {
+        // fileService.deleteFile(path);
+        // } catch (RuntimeException ex) {
+        // log.warn("Failed to delete KYC file {} for kyc id {}", path, kycId, ex);
+        // }
+        // });
         kycRepository.delete(kyc);
     }
 

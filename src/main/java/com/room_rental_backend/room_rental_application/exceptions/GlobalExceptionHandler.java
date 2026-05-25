@@ -135,4 +135,13 @@ public class GlobalExceptionHandler {
                 null,
                 HttpStatus.BAD_REQUEST);
     }
+
+    @ExceptionHandler(UserAuthenticationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleUserAuthenticationException(UserAuthenticationException ex) {
+        logger.warn("{}", ex.getMessage());
+        return GlobalResponseHandler.error(
+                ex.getMessage(),
+                null,
+                HttpStatus.UNAUTHORIZED);
+    }
 }
