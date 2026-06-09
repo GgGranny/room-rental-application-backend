@@ -5,6 +5,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDate;
 
+import com.room_rental_backend.room_rental_application.components.HttpCookieComponent;
 import org.apache.coyote.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +60,8 @@ public class AuthServiceImplementation implements AuthService {
     private final ApplicationEventPublisher eventPublisher;
 
     private final RefreshTokenService refreshTokenService;
+
+    private final HttpCookieComponent  httpCookieComponent;
 
     private static final Logger logger = LoggerFactory.getLogger(AuthServiceImplementation.class);
 
@@ -182,33 +185,101 @@ public class AuthServiceImplementation implements AuthService {
     }
 
     // check if user profile setup is complete
+//    @Override
+//    public boolean isProfileCompleted() {
+////        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+////        if(auth == null && !(auth.getPrincipal() instanceof UserDetails)) {
+////            throw new UserNotFoundException("User Does not exists");
+////        }
+////        String email = ((UserDetails) auth.getPrincipal()).getUsername();
+////        System.out.println("email: " + email);
+////        Users user = userRepository.findByEmail(email)
+////                .orElseThrow(()-> new UserNotFoundException("User does not exists"));
+////        return user.getRoles() != null
+////                && hasText(user.getFname())
+////                && hasText(user.getLname())
+////                && user.getDateOfBirth() != null;
+//        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+//
+//        if (auth == null || auth.getPrincipal() == null) {
+//            throw new UserNotFoundException("User Does not exist");
+//        }
+//
+//        Object principal = auth.getPrincipal();
+//
+//        String email;
+//
+//        if (principal instanceof UserDetails userDetails) {
+//            email = userDetails.getUsername();
+//        } else if (principal instanceof OAuth2User oauth2User) {
+//            email = oauth2User.getAttribute("email");
+//        } else {
+//            throw new UserNotFoundException("Unsupported principal type");
+//        }
+//
+//        Users user = userRepository.findByEmail(email)
+//                .orElseThrow(() ->
+//                        new UserNotFoundException("User does not exist"));
+//        return user.getRoles() != null
+//                && hasText(user.getFname())
+//                && hasText(user.getLname())
+//                && user.getDateOfBirth() != null;
+//    }
     @Override
     public boolean isProfileCompleted() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-        if (auth == null || !auth.isAuthenticated()) {
-            return false;
+        if (auth == null || !auth.isAuthenticated()
+                || "anonymousUser".equals(auth.getPrincipal())) {
+            throw new UserNotFoundException("User is not authenticated");
         }
 
         Object principal = auth.getPrincipal();
         String email;
+
         if (principal instanceof UserDetails userDetails) {
             email = userDetails.getUsername();
-        } else if (principal instanceof Users user) {
-            email = user.getEmail();
+        } else if (principal instanceof OAuth2User oauth2User) {
+            email = oauth2User.getAttribute("email");
+            if (email == null) {
+                throw new UserNotFoundException("Email attribute missing from OAuth2 user");
+            }
         } else {
-            return false;
+            throw new UserNotFoundException("Unsupported principal type: "
+                    + principal.getClass().getName());
         }
 
-        System.out.println("email: " + email);
-
         Users user = userRepository.findByEmail(email)
-                .orElse(null);
-
+                .orElseThrow(() -> new UserNotFoundException(
+                        "No account found for email: " + email));
+        System.out.println(user.toString());
+        System.out.println("roles: " + user.getRoles());
+        System.out.println("fname: " + user.getFname());
+        System.out.println("lname: " + user.getLname());
+        System.out.println("dob: " + user.getDateOfBirth());
         return user.getRoles() != null
                 && hasText(user.getFname())
                 && hasText(user.getLname())
                 && user.getDateOfBirth() != null;
+    }
+
+    @Override
+    public AuthResponse getCurrentUser(Authentication authentication) {
+        String email = authentication.getName();
+
+        Users user = userRepository.findByEmail(email)
+                .orElseThrow();
+
+        return AuthResponse.builder()
+                .Dob(user.getDateOfBirth())
+                .fname(user.getFname())
+                .lname(user.getLname())
+                .userId(user.getId())
+                .email(user.getEmail())
+                .role(user.getRoles())
+                .isVerifird(user.isVerified())
+                .refreshToken(null)
+                .build();
     }
 
     private boolean hasText(String value) {

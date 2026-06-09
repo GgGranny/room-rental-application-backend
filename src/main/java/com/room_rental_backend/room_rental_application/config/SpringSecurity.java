@@ -52,6 +52,7 @@ public class SpringSecurity {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(request -> request
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
@@ -63,10 +64,10 @@ public class SpringSecurity {
                         .requestMatchers("/api/v1/user/**").hasRole("USER")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/landlord/**").hasRole("LANDLORD")
-                        .requestMatchers("/api/v1/kyc/**").hasAnyRole("USER")
+                        .requestMatchers("/api/v1/kyc/**").hasAnyRole("USER", "LANDLORD")
                         .anyRequest().authenticated())
 
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .formLogin(Customizer.withDefaults())
 

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import jakarta.servlet.http.Cookie;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -34,6 +35,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         private final RefreshTokenService refreshTokenService;
         private final UserRepository userRepository;
         private final ObjectMapper objectMapper;
+        private final HttpCookieComponent cookieComponent;
 
         @Value("${oauth2.login.success.url}")
         private String redirectUrl;
@@ -51,28 +53,33 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 String jwtToken = jwtService.generateToken(user);
                 String refreshToken = refreshTokenService.generateRefreshToken();
 
+                Cookie accessTokenCookie = cookieComponent.createCookie("accessToken", jwtToken);
+                Cookie refreshTokenCookie = cookieComponent.createCookie("refreshToken", refreshToken);
+                response.addCookie(accessTokenCookie);
+                response.addCookie(refreshTokenCookie);
+
                 // String targetUrl = UriComponentsBuilder
                 // .fromUriString(redirectUrl)
                 // .queryParam("accessToken", jwtToken)
                 // .queryParam("refreshToken", refreshToken)
                 // .build().toUriString();
                 // System.out.println("success google login: " + targetUrl);
-                // getRedirectStrategy().sendRedirect(request, response, targetUrl);
+                 getRedirectStrategy().sendRedirect(request, response, redirectUrl);
 
-                response.setContentType("application/json");
-                response.setStatus(HttpServletResponse.SC_OK);
-                response.setCharacterEncoding("UTF-8");
-                Map<String, Object> responseBuilder = new HashMap<>();
-                responseBuilder.put("token", jwtToken);
-                responseBuilder.put("refreshToken", refreshToken);
-                responseBuilder.put("userId", user.getId());
-                responseBuilder.put("isVerified", user.isVerified());
+//                response.setContentType("application/json");
+//                response.setStatus(HttpServletResponse.SC_OK);
+//                response.setCharacterEncoding("UTF-8");
+//                Map<String, Object> responseBuilder = new HashMap<>();
+//                responseBuilder.put("token", jwtToken);
+//                responseBuilder.put("refreshToken", refreshToken);
+//                responseBuilder.put("userId", user.getId());
+//                responseBuilder.put("isVerified", user.isVerified());
+//
+//                ApiResponse<Map<String, Object>> res = new ApiResponse<>();
+//                res.setData(responseBuilder);
+//                res.setMessage("Login successful");
+//                res.setSuccess(true);
 
-                ApiResponse<Map<String, Object>> res = new ApiResponse<>();
-                res.setData(responseBuilder);
-                res.setMessage("Login successful");
-                res.setSuccess(true);
-
-                response.getWriter().write(objectMapper.writeValueAsString(res));
+//                response.getWriter().write(objectMapper.writeValueAsString(res));
         }
 }

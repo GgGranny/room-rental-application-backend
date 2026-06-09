@@ -3,6 +3,7 @@ package com.room_rental_backend.room_rental_application.components;
 import java.io.IOException;
 import java.util.List;
 
+import jakarta.servlet.http.Cookie;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -46,17 +47,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-
+        String token = null;
         // extracting the Authorization header
         String authHeader = request.getHeader("Authorization");
 
         // Check if the header is present and starts with "Bearer "
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        }else {
+            token = getJWTFromCookie(request);
+        }
+
+        if(token == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = authHeader.substring(7);
 
         try {
             String email = jwtService.extractUsername(token);
@@ -91,4 +97,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    private String getJWTFromCookie(HttpServletRequest request) {
+        if(request.getCookies()== null) {
+            return null;
+        }
+        for(Cookie cookie: request.getCookies()) {
+            if("accessToken".equals(cookie.getName())){
+                return cookie.getValue();
+            }
+        }
+        return null;
+    }
 }
