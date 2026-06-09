@@ -3,8 +3,13 @@ package com.room_rental_backend.room_rental_application.controllers;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.room_rental_backend.room_rental_application.components.HttpCookieComponent;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.aop.framework.adapter.GlobalAdvisorAdapterRegistry;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,9 +37,18 @@ public class AuthController {
 
         private final AuthService authService;
 
+        private final HttpCookieComponent httpCookieComponent;
+
         @PostMapping("login")
-        public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody UserLoginRequestDto entity) {
+        public ResponseEntity<ApiResponse<AuthResponse>> login(
+                @Valid @RequestBody UserLoginRequestDto entity,
+                HttpServletResponse rs) {
                 AuthResponse response = authService.login(entity);
+
+                Cookie accessToken = httpCookieComponent.createCookie("accessToken", response.token());
+                Cookie refreshToken = httpCookieComponent.createCookie("refreshToken", response.refreshToken());
+                rs.addCookie(accessToken);
+                rs.addCookie(refreshToken);
                 return GlobalResponseHandler.success(
                                 "Login Successful",
                                 response,
@@ -95,7 +109,24 @@ public class AuthController {
                 return GlobalResponseHandler.error(
                                 "Profile setup is not completed",
                                 response,
-                                HttpStatus.INTERNAL_SERVER_ERROR);
+                                HttpStatus.OK);
         }
+
+        @GetMapping("/me")
+        public ResponseEntity<ApiResponse<AuthResponse>> getCurrentUser(Authentication authentication){
+            AuthResponse response = authService.getCurrentUser(authentication);
+            if (response == null) {
+                return GlobalResponseHandler.error(
+                        "User not found",
+                        null,
+                        HttpStatus.NOT_FOUND
+                );
+            }
+            return GlobalResponseHandler.success(
+                    "User found successfully",
+                    response,
+                    HttpStatus.OK
+            );
+    }
 
 }
