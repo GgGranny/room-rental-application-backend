@@ -148,9 +148,23 @@ public class AuthServiceImplementation implements AuthService {
         }
     }
 
+//    @Override
+//    public AuthResponse refreshToken(RefreshTokenRequest refreshToken) {
+//        String refreshTokenReq = refreshToken.refreshToken();
+//        RefreshToken token = refreshTokenService.validateToken(refreshTokenReq);
+//
+//        String userId = token.getUser().getId();
+//        Users user = userRepository.findById(userId)
+//                .orElseThrow(
+//                        () -> new UserNotFoundException("User of id: " + userId + " Does not exists"));
+//        String newJwtToken = jwtService.generateToken(user);
+//
+//        return authMapper.toAuthResponse(user, newJwtToken, refreshTokenReq);
+//
+//    }
     @Override
-    public AuthResponse refreshToken(RefreshTokenRequest refreshToken) {
-        String refreshTokenReq = refreshToken.refreshToken();
+    public AuthResponse refreshToken(String refreshToken) {
+        String refreshTokenReq = refreshToken;
         RefreshToken token = refreshTokenService.validateToken(refreshTokenReq);
 
         String userId = token.getUser().getId();
@@ -265,10 +279,13 @@ public class AuthServiceImplementation implements AuthService {
 
     @Override
     public AuthResponse getCurrentUser(Authentication authentication) {
+        if(authentication == null || !authentication.isAuthenticated()) {
+            throw new UserNotFoundException("not Authenticated");
+        }
         String email = authentication.getName();
 
         Users user = userRepository.findByEmail(email)
-                .orElseThrow();
+                .orElseThrow(()-> new UserNotFoundException("user with email: "+ email+ " does not exists"));
 
         return AuthResponse.builder()
                 .Dob(user.getDateOfBirth())

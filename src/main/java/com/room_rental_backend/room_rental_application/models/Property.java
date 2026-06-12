@@ -53,8 +53,11 @@ public class Property extends BaseEntity {
     @Column(name = "city", nullable = false)
     private String city;
 
-    @Column(name = "state", nullable = false)
-    private String state;
+    @Column(name = "district", nullable = false)
+    private String district;
+
+    @Column(name = "province", nullable = false)
+    private String province;
 
     @Column(name = "zip_code", nullable = false)
     private String zipCode;
