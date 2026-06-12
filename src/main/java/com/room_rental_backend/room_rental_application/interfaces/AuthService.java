@@ -14,7 +14,8 @@ public interface AuthService {
 
     AuthResponse activateUser(String userId);
 
-    AuthResponse refreshToken(RefreshTokenRequest refreshToken);
+//    AuthResponse refreshToken(RefreshTokenRequest refreshToken);
+    AuthResponse refreshToken(String refreshToken);
 
     AuthResponse completeUserProfile(CompleteUserProfileRequest request);
 

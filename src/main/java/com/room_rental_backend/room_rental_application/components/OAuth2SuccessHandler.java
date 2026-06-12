@@ -40,6 +40,14 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         @Value("${oauth2.login.success.url}")
         private String redirectUrl;
 
+        @Value("${access.token.expiration}")
+        private int accessTokenAge;
+
+        @Value("${refresh.token.expiration}")
+        private int refreshTokenAge;
+
+
+
         @Override
         public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                         Authentication authentication) throws IOException, ServletException {
@@ -53,8 +61,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 String jwtToken = jwtService.generateToken(user);
                 String refreshToken = refreshTokenService.generateRefreshToken();
 
-                Cookie accessTokenCookie = cookieComponent.createCookie("accessToken", jwtToken);
-                Cookie refreshTokenCookie = cookieComponent.createCookie("refreshToken", refreshToken);
+                Cookie accessTokenCookie = cookieComponent.createCookie("accessToken", jwtToken, accessTokenAge);
+                Cookie refreshTokenCookie = cookieComponent.createCookie("refreshToken", refreshToken, refreshTokenAge);
                 response.addCookie(accessTokenCookie);
                 response.addCookie(refreshTokenCookie);
 

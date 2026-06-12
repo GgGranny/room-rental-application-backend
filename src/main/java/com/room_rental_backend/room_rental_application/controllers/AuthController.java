@@ -1,12 +1,17 @@
 package com.room_rental_backend.room_rental_application.controllers;
 
+import java.nio.file.AccessDeniedException;
 import java.util.HashMap;
 import java.util.Map;
 
 import com.room_rental_backend.room_rental_application.components.HttpCookieComponent;
+import com.room_rental_backend.room_rental_application.exceptions.TokenNotFoundException;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.aop.framework.adapter.GlobalAdvisorAdapterRegistry;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -39,14 +44,20 @@ public class AuthController {
 
         private final HttpCookieComponent httpCookieComponent;
 
+        @Value("${access.token.expiration}")
+        private int accessTokenAge;
+
+        @Value("${refresh.token.expiration}")
+        private int refreshTokenAge;
+
         @PostMapping("login")
         public ResponseEntity<ApiResponse<AuthResponse>> login(
                 @Valid @RequestBody UserLoginRequestDto entity,
                 HttpServletResponse rs) {
                 AuthResponse response = authService.login(entity);
 
-                Cookie accessToken = httpCookieComponent.createCookie("accessToken", response.token());
-                Cookie refreshToken = httpCookieComponent.createCookie("refreshToken", response.refreshToken());
+                Cookie accessToken = httpCookieComponent.createCookie("accessToken", response.token(), accessTokenAge);
+                Cookie refreshToken = httpCookieComponent.createCookie("refreshToken", response.refreshToken(), refreshTokenAge);
                 rs.addCookie(accessToken);
                 rs.addCookie(refreshToken);
                 return GlobalResponseHandler.success(
@@ -74,12 +85,31 @@ public class AuthController {
                                 HttpStatus.OK);
         }
 
+//        @PostMapping("refresh")
+//        public ResponseEntity<ApiResponse<AuthResponse>> refreshtokenValidation(
+//                        @RequestBody RefreshTokenRequest refreshToken) {
+//                AuthResponse response = authService.refreshToken(refreshToken);
+//                return GlobalResponseHandler.success(
+//                                "Login Successful",
+//                                response,
+//                                HttpStatus.OK);
+//        }
+
         @PostMapping("refresh")
         public ResponseEntity<ApiResponse<AuthResponse>> refreshtokenValidation(
-                        @RequestBody RefreshTokenRequest refreshToken) {
+                HttpServletRequest request,
+                HttpServletResponse rs) {
+                String refreshToken = httpCookieComponent.getCookieValue(request, "refreshToken");
+                if(refreshToken == null) {
+                        throw new TokenNotFoundException("Refresh token is empty");
+                }
+
                 AuthResponse response = authService.refreshToken(refreshToken);
+
+                Cookie newAccessTokenCookie = httpCookieComponent.createCookie("accessToken", response.token(), accessTokenAge);
+                rs.addCookie(newAccessTokenCookie);
                 return GlobalResponseHandler.success(
-                                "Login Successful",
+                                "New Token Created Successfully",
                                 response,
                                 HttpStatus.OK);
         }
@@ -113,20 +143,13 @@ public class AuthController {
         }
 
         @GetMapping("/me")
-        public ResponseEntity<ApiResponse<AuthResponse>> getCurrentUser(Authentication authentication){
+        public ResponseEntity<ApiResponse<AuthResponse>> getCurrentUser(Authentication authentication) throws Exception{
             AuthResponse response = authService.getCurrentUser(authentication);
-            if (response == null) {
-                return GlobalResponseHandler.error(
-                        "User not found",
-                        null,
-                        HttpStatus.NOT_FOUND
-                );
-            }
             return GlobalResponseHandler.success(
                     "User found successfully",
                     response,
                     HttpStatus.OK
             );
-    }
+        }
 
 }
