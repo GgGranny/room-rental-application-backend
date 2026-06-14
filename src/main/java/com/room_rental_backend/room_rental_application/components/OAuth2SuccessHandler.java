@@ -66,13 +66,13 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 response.addCookie(accessTokenCookie);
                 response.addCookie(refreshTokenCookie);
 
-                // String targetUrl = UriComponentsBuilder
-                // .fromUriString(redirectUrl)
-                // .queryParam("accessToken", jwtToken)
-                // .queryParam("refreshToken", refreshToken)
-                // .build().toUriString();
-                // System.out.println("success google login: " + targetUrl);
-                 getRedirectStrategy().sendRedirect(request, response, redirectUrl);
+                String targetUrl = UriComponentsBuilder
+                        .fromUriString(redirectUrl)
+                        .queryParam("accessToken", jwtToken)
+                        .queryParam("refreshToken", refreshToken)
+                        .build().toUriString();
+                System.out.println("success google login: " + targetUrl);
+                getRedirectStrategy().sendRedirect(request, response, targetUrl);
 
 //                response.setContentType("application/json");
 //                response.setStatus(HttpServletResponse.SC_OK);

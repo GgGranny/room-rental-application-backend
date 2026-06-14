@@ -9,7 +9,7 @@ import java.util.List;
 @Component
 public class HttpCookieComponent {
 
-    public  Cookie createCookie(String cookieName, String value, int maxAge) {
+    public Cookie createCookie(String cookieName, String value, int maxAge) {
         Cookie cookie = new Cookie(cookieName, value);
         cookie.setHttpOnly(true);
         cookie.setPath("/");
@@ -18,14 +18,12 @@ public class HttpCookieComponent {
     }
 
     public String getCookieValue(HttpServletRequest request, String cookieName) {
-        if(request.getCookies() == null) {
+        if (request.getCookies() == null) {
             return null;
         }
-        if(request.getCookies() != null) {
-            for(Cookie cookie: request.getCookies()) {
-                if("refreshToken".equalsIgnoreCase(cookie.getName())) {
-                    return cookie.getValue();
-                }
+        for (Cookie cookie : request.getCookies()) {
+            if (cookieName != null && cookieName.equalsIgnoreCase(cookie.getName())) {
+                return cookie.getValue();
             }
         }
         return null;
