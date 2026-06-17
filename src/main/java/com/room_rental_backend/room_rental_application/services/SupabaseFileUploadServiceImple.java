@@ -8,15 +8,19 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.room_rental_backend.room_rental_application.enums.ImageMetadataTypes;
+import com.room_rental_backend.room_rental_application.exceptions.FileUploadException;
 import com.room_rental_backend.room_rental_application.exceptions.UserAuthenticationException;
 import com.room_rental_backend.room_rental_application.exceptions.UserNotFoundException;
 import com.room_rental_backend.room_rental_application.interfaces.SupabaseFileStorageService;
@@ -56,11 +60,16 @@ public class SupabaseFileUploadServiceImple implements SupabaseFileStorageServic
     @Override
     public ImageMetadata uploadFile(MultipartFile file, String folderName, String bucketType, String metadataType) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof UserDetails)) {
+        if (authentication == null || !authentication.isAuthenticated()) {
             throw new UserAuthenticationException("User not authenticated");
         }
 
-        String userEmail = ((UserDetails) authentication.getPrincipal()).getUsername();
+        String userEmail;
+        if (authentication.getPrincipal() instanceof UserDetails userDetails) {
+            userEmail = userDetails.getUsername();
+        } else {
+            userEmail = authentication.getName();
+        }
         log.info("Authenticated user email: {}", userEmail);
         Users user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new UserNotFoundException("Authenticated user not found in the database"));
@@ -72,9 +81,9 @@ public class SupabaseFileUploadServiceImple implements SupabaseFileStorageServic
         String uploadUrl = supabaseUrl + "/storage/v1/object/" + bucketName + "/" + storagePath;
 
         HttpHeaders headers = new HttpHeaders();
-        headers.set("apiKey", supabaseKey);
+        headers.set("apikey", supabaseKey);
         headers.set("Authorization", "Bearer " + supabaseKey);
-        headers.set("Content-Type", file.getContentType().toString());
+        headers.setContentType(MediaType.parseMediaType(file.getContentType()));
         headers.set("x-upsert", "true");
 
         try {
@@ -87,7 +96,7 @@ public class SupabaseFileUploadServiceImple implements SupabaseFileStorageServic
             System.out.println("Supabase upload response: " + response.getBody());
             if (!response.getStatusCode().is2xxSuccessful()) {
                 log.error("Failed to upload file to Supabase: {}", response.getBody());
-                throw new RuntimeException("Failed to upload file to Supabase: " + response.getStatusCode());
+                throw new FileUploadException("Supabase upload failed: " + response.getStatusCode());
             }
 
             ImageMetadataTypes metadataTypeEnum = Stream.of(ImageMetadataTypes.values())
@@ -110,7 +119,13 @@ public class SupabaseFileUploadServiceImple implements SupabaseFileStorageServic
             return imageMetadataRepository.save(metadata);
         } catch (IOException e) {
             log.error("Error reading file bytes: {}", e.getMessage());
-            throw new RuntimeException("Failed to read file bytes", e);
+            throw new FileUploadException("Failed to read file bytes");
+        } catch (HttpStatusCodeException e) {
+            log.error("Supabase upload failed with status {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new FileUploadException("Supabase upload failed: " + e.getStatusCode());
+        } catch (RestClientException e) {
+            log.error("Supabase upload request failed: {}", e.getMessage());
+            throw new FileUploadException("Supabase upload request failed");
         }
     }
 
@@ -140,6 +155,9 @@ public class SupabaseFileUploadServiceImple implements SupabaseFileStorageServic
 
     // Validates the file type and size
     private void validateFile(MultipartFile file) {
+        if (file == null) {
+            throw new IllegalArgumentException("File is required");
+        }
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
         }
@@ -149,7 +167,7 @@ public class SupabaseFileUploadServiceImple implements SupabaseFileStorageServic
         }
 
         // Only allow image files
-        if (!file.getContentType().startsWith("image/")) {
+        if (file.getContentType() == null || !file.getContentType().startsWith("image/")) {
             throw new IllegalArgumentException("Only image files are allowed");
         }
     }
@@ -157,7 +175,11 @@ public class SupabaseFileUploadServiceImple implements SupabaseFileStorageServic
     // Extracts the file extension
     private String getFileExtension(MultipartFile file) {
         validateFile(file);
-        return file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".") + 1);
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || !originalFilename.contains(".")) {
+            throw new IllegalArgumentException("File must have an extension");
+        }
+        return originalFilename.substring(originalFilename.lastIndexOf(".") + 1);
     }
 
 }
