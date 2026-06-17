@@ -2,6 +2,7 @@ package com.room_rental_backend.room_rental_application.repositories;
 
 import java.util.List;
 
+import com.room_rental_backend.room_rental_application.models.Users;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -18,4 +19,5 @@ public interface ImageMetadataRepository extends JpaRepository<ImageMetadata, Lo
     @Query("SELECT id FROM ImageMetadata data WHERE data.user.id = :userId AND data.metadataType = :type")
     List<Long> getAllKycMetadatasIds(String userId, ImageMetadataTypes type);
 
+    ImageMetadata findByUser(Users user);
 }

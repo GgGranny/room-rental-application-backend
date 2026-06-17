@@ -6,6 +6,6 @@ import org.springframework.stereotype.Repository;
 import com.room_rental_backend.room_rental_application.models.Property;
 
 @Repository
-public interface PropertRepository extends JpaRepository<Property, String> {
+public interface PropertyRepository extends JpaRepository<Property, String> {
 
 }

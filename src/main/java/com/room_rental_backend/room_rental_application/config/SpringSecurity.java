@@ -63,6 +63,7 @@ public class SpringSecurity {
 
                         .requestMatchers("/api/v1/user/**").hasRole("USER")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/property", "/api/v1/property/**").hasRole("LANDLORD")
                         .requestMatchers("/api/v1/landlord/**").hasRole("LANDLORD")
                         .requestMatchers("/api/v1/kyc/**").hasAnyRole("USER", "LANDLORD")
                         .anyRequest().authenticated())

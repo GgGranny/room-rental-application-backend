@@ -36,6 +36,7 @@ import com.room_rental_backend.room_rental_application.interfaces.AuthService;
 import com.room_rental_backend.room_rental_application.interfaces.RefreshTokenService;
 import com.room_rental_backend.room_rental_application.mappers.AuthMapper;
 import com.room_rental_backend.room_rental_application.models.ActivationToken;
+import com.room_rental_backend.room_rental_application.models.Landlord;
 import com.room_rental_backend.room_rental_application.models.RefreshToken;
 import com.room_rental_backend.room_rental_application.models.Users;
 import com.room_rental_backend.room_rental_application.repositories.ActivationTokenRepository;
@@ -61,7 +62,7 @@ public class AuthServiceImplementation implements AuthService {
 
     private final RefreshTokenService refreshTokenService;
 
-    private final HttpCookieComponent  httpCookieComponent;
+    private final HttpCookieComponent httpCookieComponent;
 
     private static final Logger logger = LoggerFactory.getLogger(AuthServiceImplementation.class);
 
@@ -148,20 +149,21 @@ public class AuthServiceImplementation implements AuthService {
         }
     }
 
-//    @Override
-//    public AuthResponse refreshToken(RefreshTokenRequest refreshToken) {
-//        String refreshTokenReq = refreshToken.refreshToken();
-//        RefreshToken token = refreshTokenService.validateToken(refreshTokenReq);
-//
-//        String userId = token.getUser().getId();
-//        Users user = userRepository.findById(userId)
-//                .orElseThrow(
-//                        () -> new UserNotFoundException("User of id: " + userId + " Does not exists"));
-//        String newJwtToken = jwtService.generateToken(user);
-//
-//        return authMapper.toAuthResponse(user, newJwtToken, refreshTokenReq);
-//
-//    }
+    // @Override
+    // public AuthResponse refreshToken(RefreshTokenRequest refreshToken) {
+    // String refreshTokenReq = refreshToken.refreshToken();
+    // RefreshToken token = refreshTokenService.validateToken(refreshTokenReq);
+    //
+    // String userId = token.getUser().getId();
+    // Users user = userRepository.findById(userId)
+    // .orElseThrow(
+    // () -> new UserNotFoundException("User of id: " + userId + " Does not
+    // exists"));
+    // String newJwtToken = jwtService.generateToken(user);
+    //
+    // return authMapper.toAuthResponse(user, newJwtToken, refreshTokenReq);
+    //
+    // }
     @Override
     public AuthResponse refreshToken(String refreshToken) {
         String refreshTokenReq = refreshToken;
@@ -189,6 +191,12 @@ public class AuthServiceImplementation implements AuthService {
         user.setLname(request.lname());
         user.setDateOfBirth(request.dob());
 
+        if (request.role() == Roles.ROLE_LANDLORD) {
+            Landlord landlord = new Landlord();
+            landlord.setUser(user);
+            user.setLandlord(landlord);
+        }
+
         Users savedUser = userRepository.save(user);
 
         // Generate new tokens with role
@@ -199,46 +207,47 @@ public class AuthServiceImplementation implements AuthService {
     }
 
     // check if user profile setup is complete
-//    @Override
-//    public boolean isProfileCompleted() {
-////        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-////        if(auth == null && !(auth.getPrincipal() instanceof UserDetails)) {
-////            throw new UserNotFoundException("User Does not exists");
-////        }
-////        String email = ((UserDetails) auth.getPrincipal()).getUsername();
-////        System.out.println("email: " + email);
-////        Users user = userRepository.findByEmail(email)
-////                .orElseThrow(()-> new UserNotFoundException("User does not exists"));
-////        return user.getRoles() != null
-////                && hasText(user.getFname())
-////                && hasText(user.getLname())
-////                && user.getDateOfBirth() != null;
-//        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-//
-//        if (auth == null || auth.getPrincipal() == null) {
-//            throw new UserNotFoundException("User Does not exist");
-//        }
-//
-//        Object principal = auth.getPrincipal();
-//
-//        String email;
-//
-//        if (principal instanceof UserDetails userDetails) {
-//            email = userDetails.getUsername();
-//        } else if (principal instanceof OAuth2User oauth2User) {
-//            email = oauth2User.getAttribute("email");
-//        } else {
-//            throw new UserNotFoundException("Unsupported principal type");
-//        }
-//
-//        Users user = userRepository.findByEmail(email)
-//                .orElseThrow(() ->
-//                        new UserNotFoundException("User does not exist"));
-//        return user.getRoles() != null
-//                && hasText(user.getFname())
-//                && hasText(user.getLname())
-//                && user.getDateOfBirth() != null;
-//    }
+    // @Override
+    // public boolean isProfileCompleted() {
+    //// Authentication auth =
+    // SecurityContextHolder.getContext().getAuthentication();
+    //// if(auth == null && !(auth.getPrincipal() instanceof UserDetails)) {
+    //// throw new UserNotFoundException("User Does not exists");
+    //// }
+    //// String email = ((UserDetails) auth.getPrincipal()).getUsername();
+    //// System.out.println("email: " + email);
+    //// Users user = userRepository.findByEmail(email)
+    //// .orElseThrow(()-> new UserNotFoundException("User does not exists"));
+    //// return user.getRoles() != null
+    //// && hasText(user.getFname())
+    //// && hasText(user.getLname())
+    //// && user.getDateOfBirth() != null;
+    // Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    //
+    // if (auth == null || auth.getPrincipal() == null) {
+    // throw new UserNotFoundException("User Does not exist");
+    // }
+    //
+    // Object principal = auth.getPrincipal();
+    //
+    // String email;
+    //
+    // if (principal instanceof UserDetails userDetails) {
+    // email = userDetails.getUsername();
+    // } else if (principal instanceof OAuth2User oauth2User) {
+    // email = oauth2User.getAttribute("email");
+    // } else {
+    // throw new UserNotFoundException("Unsupported principal type");
+    // }
+    //
+    // Users user = userRepository.findByEmail(email)
+    // .orElseThrow(() ->
+    // new UserNotFoundException("User does not exist"));
+    // return user.getRoles() != null
+    // && hasText(user.getFname())
+    // && hasText(user.getLname())
+    // && user.getDateOfBirth() != null;
+    // }
     @Override
     public boolean isProfileCompleted() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -279,13 +288,13 @@ public class AuthServiceImplementation implements AuthService {
 
     @Override
     public AuthResponse getCurrentUser(Authentication authentication) {
-        if(authentication == null || !authentication.isAuthenticated()) {
+        if (authentication == null || !authentication.isAuthenticated()) {
             throw new UserNotFoundException("not Authenticated");
         }
         String email = authentication.getName();
 
         Users user = userRepository.findByEmail(email)
-                .orElseThrow(()-> new UserNotFoundException("user with email: "+ email+ " does not exists"));
+                .orElseThrow(() -> new UserNotFoundException("user with email: " + email + " does not exists"));
 
         return AuthResponse.builder()
                 .Dob(user.getDateOfBirth())
