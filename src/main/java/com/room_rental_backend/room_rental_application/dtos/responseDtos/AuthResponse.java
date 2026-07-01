@@ -6,13 +6,14 @@ import lombok.Builder;
 
 @Builder
 public record AuthResponse(
-        String userId,
-        String token,
-        String refreshToken,
-        Roles role,
-        String fname,
-        String lname,
-        String email,
-        String Dob,
-        boolean isVerifird) {
+                String userId,
+                String landlordId,
+                String token,
+                String refreshToken,
+                Roles role,
+                String fname,
+                String lname,
+                String email,
+                String Dob,
+                boolean isVerifird) {
 }

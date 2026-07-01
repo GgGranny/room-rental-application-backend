@@ -9,7 +9,9 @@ import com.room_rental_backend.room_rental_application.enums.TannentsPreferred;
 import com.room_rental_backend.room_rental_application.models.base_entity.BaseEntity;
 
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -49,22 +51,35 @@ public class Room extends BaseEntity {
     @Column(name = "status")
     private RoomStatus status;
 
+    @ElementCollection(fetch = FetchType.LAZY)
     @Enumerated(EnumType.STRING)
-    @Column(name = "preferred_tenants")
+    @CollectionTable(name = "room_preferred_tenants", joinColumns = @JoinColumn(name = "room_id"))
+    @Column(name = "preferred_tenant")
     @Builder.Default
     private List<TannentsPreferred> preferredTenants = new ArrayList<>();
 
-    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @Column(name = "rules")
-    private List<RoomRules> rules;
-
-    @Column(name = "image_urls", nullable = true)
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "room_rule_texts", joinColumns = @JoinColumn(name = "room_id"))
+    @Column(name = "rule", nullable = true)
     @Builder.Default
-    private List<String> imageUrls = new ArrayList<>();
+    private List<String> rules = new ArrayList<>();
 
-    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @Column(name = "facilities", nullable = true)
-    private List<RoomFacilities> facilities;
+    // @ElementCollection(fetch = FetchType.LAZY)
+    // @CollectionTable(name = "room_image_urls", joinColumns = @JoinColumn(name =
+    // "room_id"))
+    // @Column(name = "image_urls", nullable = true)
+    // @Builder.Default
+    // private List<String> imageUrls = new ArrayList<>();
+
+    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<ImageMetadata> images = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "room_facility_names", joinColumns = @JoinColumn(name = "room_id"))
+    @Column(name = "facility", nullable = true)
+    @Builder.Default
+    private List<String> facilities = new ArrayList<>();
 
     @Column(name = "room_type", nullable = true, length = 50)
     private String roomType;
@@ -78,5 +93,14 @@ public class Room extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "property_id", nullable = false)
     private Property property;
+
+    @Column(name = "address")
+    private String address;
+
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
 
 }

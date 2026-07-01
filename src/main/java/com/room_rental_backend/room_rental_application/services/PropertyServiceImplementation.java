@@ -22,6 +22,7 @@ import com.room_rental_backend.room_rental_application.models.Landlord;
 import com.room_rental_backend.room_rental_application.models.Property;
 import com.room_rental_backend.room_rental_application.repositories.LandlordRepository;
 import com.room_rental_backend.room_rental_application.repositories.PropertyRepository;
+import com.room_rental_backend.room_rental_application.repositories.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -38,6 +39,8 @@ public class PropertyServiceImplementation implements PropertyService {
     private final SupabaseFileStorageService supabaseFileStorageService;
 
     private final ImageMetadataRepository imageMetadataRepository;
+
+    private final UserRepository userRepository;
 
     @Value("${supabase.public-bucket-name}")
     private String publicBucket;
@@ -78,7 +81,6 @@ public class PropertyServiceImplementation implements PropertyService {
         property.setLandlord(landlord);
         property.setPropertyStatus(propertyRequest.propertyStatus());
         property.setDescription(propertyRequest.description());
-        property.setAddress(propertyRequest.address());
         property.setCity(propertyRequest.city());
         property.setDistrict(propertyRequest.district());
         property.setProvince(propertyRequest.province());
@@ -87,7 +89,7 @@ public class PropertyServiceImplementation implements PropertyService {
 
         if (propertyThumbnail != null && !propertyThumbnail.isEmpty()) {
             ImageMetadata imageMetadata = imageMetadataRepository.findByUser(landlord.getUser());
-            if(imageMetadata != null) {
+            if (imageMetadata != null) {
                 supabaseFileStorageService.deleteFile(imageMetadata.getId(), publicBucket);
             }
             property.setThumbnailUrl(uploadThumbnail(propertyThumbnail));
@@ -119,7 +121,7 @@ public class PropertyServiceImplementation implements PropertyService {
     public boolean deleteProperty(String propertyId) {
         Property property = findPropertyById(propertyId);
         ImageMetadata imageMetadata = imageMetadataRepository.findByUser(property.getLandlord().getUser());
-        if(imageMetadata != null) {
+        if (imageMetadata != null) {
             supabaseFileStorageService.deleteFile(imageMetadata.getId(), publicBucket);
         }
         propertyRepository.delete(property);

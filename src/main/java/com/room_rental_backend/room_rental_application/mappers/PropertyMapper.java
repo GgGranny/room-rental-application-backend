@@ -8,10 +8,13 @@ import com.room_rental_backend.room_rental_application.dtos.responseDtos.Propert
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.PropertyResponseDto;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.RoomResponseDto;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.UserResponse;
+import com.room_rental_backend.room_rental_application.enums.ImageMetadataTypes;
 import com.room_rental_backend.room_rental_application.enums.PropertyStatus;
 import com.room_rental_backend.room_rental_application.models.Landlord;
 import com.room_rental_backend.room_rental_application.models.Property;
 import com.room_rental_backend.room_rental_application.models.Users;
+import com.room_rental_backend.room_rental_application.repositories.ImageMetadataRepository;
+
 import org.springframework.stereotype.Component;
 
 import lombok.RequiredArgsConstructor;
@@ -20,9 +23,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PropertyMapper {
 
+        private final ImageMetadataMapper imageMetadataMapper;
+
+        private final ImageMetadataRepository imageMetadataRepository;
+
         public Property toEntity(PropertyRequest request, String thumbnailUrl, Landlord landlord) {
                 return Property.builder()
-                                .address(request.address())
                                 .country(request.country())
                                 .city(request.city())
                                 .description(request.description())
@@ -38,7 +44,6 @@ public class PropertyMapper {
 
         public PropertyResponseDto toPropertyResponseDto(Property property) {
                 return PropertyResponseDto.builder()
-                                .address(property.getAddress())
                                 .city(property.getCity())
                                 .country(property.getCountry())
                                 .description(property.getDescription())
@@ -83,7 +88,12 @@ public class PropertyMapper {
                                                 .roomType(room.getRoomType())
                                                 .floorNumber(room.getFloorNumber())
                                                 .totalRooms(room.getTotalRooms())
-                                                .imageUrls(room.getImageUrls())
+                                                .imageUrls(imageMetadataRepository
+                                                                .findAllByRoomIdAndMetadataTypeOrderByUploadedAtAsc(
+                                                                                room.getId(), ImageMetadataTypes.ROOM)
+                                                                .stream()
+                                                                .map(imageMetadataMapper::toImageDataResponse)
+                                                                .toList())
                                                 .propertyId(property.getId().toString())
                                                 .propertyName(property.getPropertyName())
                                                 .city(property.getCity())
@@ -91,7 +101,6 @@ public class PropertyMapper {
                                                 .build())
                                 .toList();
                 return PropertyDetailsResponseDto.builder()
-                                .address(property.getAddress())
                                 .city(property.getCity())
                                 .country(property.getCountry())
                                 .description(property.getDescription())

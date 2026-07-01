@@ -4,18 +4,17 @@ import lombok.Builder;
 
 @Builder
 public record PropertyResponseDto(
-        String id,
-        String propertyName,
-        String propertyStatus,
-        String description,
-        String thumbnailUrl,
+                String id,
+                String propertyName,
+                String propertyStatus,
+                String description,
+                String thumbnailUrl,
 
-        String address,
-        String city,
-        String district,
-        String province,
-        String zipCode,
-        String country,
+                String city,
+                String district,
+                String province,
+                String zipCode,
+                String country,
 
-        Integer totalRooms) {
+                Integer totalRooms) {
 }

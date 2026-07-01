@@ -14,7 +14,6 @@ public class PropertyDetailsResponseDto {
     private String description;
     private String thumbnailUrl;
 
-    private String address;
     private String city;
     private String district;
     private String province;
