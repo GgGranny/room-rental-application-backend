@@ -1,4 +1,6 @@
 
+
+
 -- Create User table
 INSERT INTO users (
     id,
@@ -34,7 +36,7 @@ INSERT INTO users (
     NULL,
     true,
     true
-);
+) ON CONFLICT DO NOTHING;
 
 INSERT INTO users (
     id,
@@ -70,7 +72,7 @@ INSERT INTO users (
     NULL,
     true,
     true
-);
+) ON CONFLICT DO NOTHING;
 INSERT INTO landlords (
     id,
     created_at,
@@ -83,4 +85,4 @@ INSERT INTO landlords (
     CURRENT_TIMESTAMP,
     false,
     '2ceecb10-5543-48a8-a481-480e87654321'
-);
+) ON CONFLICT DO NOTHING;

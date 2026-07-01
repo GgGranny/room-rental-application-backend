@@ -2,13 +2,13 @@ package com.room_rental_backend.room_rental_application.repositories;
 
 import java.util.List;
 
-import com.room_rental_backend.room_rental_application.models.Users;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import com.room_rental_backend.room_rental_application.enums.ImageMetadataTypes;
 import com.room_rental_backend.room_rental_application.models.ImageMetadata;
+import com.room_rental_backend.room_rental_application.models.Users;
 
 public interface ImageMetadataRepository extends JpaRepository<ImageMetadata, Long> {
 
@@ -20,4 +20,9 @@ public interface ImageMetadataRepository extends JpaRepository<ImageMetadata, Lo
     List<Long> getAllKycMetadatasIds(String userId, ImageMetadataTypes type);
 
     ImageMetadata findByUser(Users user);
+
+    List<ImageMetadata> findAllByRoomIdAndMetadataTypeOrderByUploadedAtAsc(String roomId, ImageMetadataTypes type);
+
+    List<ImageMetadata> findAllByIdInAndRoomIdAndMetadataType(List<Long> roomIdsToRemove, String roomId,
+            ImageMetadataTypes room);
 }

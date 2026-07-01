@@ -20,6 +20,7 @@ public class AuthMapper {
     public AuthResponse toAuthResponse(Users user, String token, String refreshToken) {
         AuthResponse response = new AuthResponse(
                 user.getId(),
+                user.getLandlord() == null ? null : user.getLandlord().getId(),
                 token,
                 refreshToken,
                 user.getRoles(),

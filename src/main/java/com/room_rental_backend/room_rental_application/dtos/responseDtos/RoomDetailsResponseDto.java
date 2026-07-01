@@ -11,7 +11,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class RoomResponseDto {
+public class RoomDetailsResponseDto {
     private String roomId;
 
     private String roomTitle;
@@ -38,4 +38,12 @@ public class RoomResponseDto {
     private String city;
     private String district;
     private String province;
+
+    private String address;
+
+    private Double latitude;
+
+    private Double Longitude;
+
+    private UserResponse userResponse;
 }

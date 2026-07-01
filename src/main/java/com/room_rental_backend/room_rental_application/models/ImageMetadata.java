@@ -18,7 +18,9 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity
 @Table(name = "image_metadata")
@@ -53,6 +55,12 @@ public class ImageMetadata {
     @ManyToOne
     @JoinColumn(name = "user_id")
     private Users user;
+
+    @ManyToOne
+    @JoinColumn(name = "room_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Room room;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "metadata_type", nullable = false)

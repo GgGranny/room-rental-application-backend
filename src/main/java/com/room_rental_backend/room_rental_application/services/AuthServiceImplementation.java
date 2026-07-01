@@ -40,6 +40,7 @@ import com.room_rental_backend.room_rental_application.models.Landlord;
 import com.room_rental_backend.room_rental_application.models.RefreshToken;
 import com.room_rental_backend.room_rental_application.models.Users;
 import com.room_rental_backend.room_rental_application.repositories.ActivationTokenRepository;
+import com.room_rental_backend.room_rental_application.repositories.LandlordRepository;
 import com.room_rental_backend.room_rental_application.repositories.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -63,6 +64,8 @@ public class AuthServiceImplementation implements AuthService {
     private final RefreshTokenService refreshTokenService;
 
     private final HttpCookieComponent httpCookieComponent;
+
+    private final LandlordRepository landlordRepository;
 
     private static final Logger logger = LoggerFactory.getLogger(AuthServiceImplementation.class);
 
@@ -296,6 +299,7 @@ public class AuthServiceImplementation implements AuthService {
         Users user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("user with email: " + email + " does not exists"));
 
+        Landlord landlord = landlordRepository.findByUser(user);
         return AuthResponse.builder()
                 .Dob(user.getDateOfBirth())
                 .fname(user.getFname())
@@ -305,6 +309,7 @@ public class AuthServiceImplementation implements AuthService {
                 .role(user.getRoles())
                 .isVerifird(user.isVerified())
                 .refreshToken(null)
+                .landlordId(user.getRoles().equals(Roles.ROLE_LANDLORD) ? landlord.getId() : null)
                 .build();
     }
 
