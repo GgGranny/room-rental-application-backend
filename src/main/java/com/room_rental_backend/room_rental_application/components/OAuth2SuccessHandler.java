@@ -46,8 +46,6 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         @Value("${refresh.token.expiration}")
         private int refreshTokenAge;
 
-
-
         @Override
         public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                         Authentication authentication) throws IOException, ServletException {
@@ -63,31 +61,33 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
                 Cookie accessTokenCookie = cookieComponent.createCookie("accessToken", jwtToken, accessTokenAge);
                 Cookie refreshTokenCookie = cookieComponent.createCookie("refreshToken", refreshToken, refreshTokenAge);
+                Cookie roleCookie = cookieComponent.createCookie("role", user.getRoles().toString(), accessTokenAge);
                 response.addCookie(accessTokenCookie);
                 response.addCookie(refreshTokenCookie);
+                response.addCookie(roleCookie);
 
                 String targetUrl = UriComponentsBuilder
-                        .fromUriString(redirectUrl)
-                        .queryParam("accessToken", jwtToken)
-                        .queryParam("refreshToken", refreshToken)
-                        .build().toUriString();
+                                .fromUriString(redirectUrl)
+                                .queryParam("accessToken", jwtToken)
+                                .queryParam("refreshToken", refreshToken)
+                                .build().toUriString();
                 System.out.println("success google login: " + targetUrl);
                 getRedirectStrategy().sendRedirect(request, response, targetUrl);
 
-//                response.setContentType("application/json");
-//                response.setStatus(HttpServletResponse.SC_OK);
-//                response.setCharacterEncoding("UTF-8");
-//                Map<String, Object> responseBuilder = new HashMap<>();
-//                responseBuilder.put("token", jwtToken);
-//                responseBuilder.put("refreshToken", refreshToken);
-//                responseBuilder.put("userId", user.getId());
-//                responseBuilder.put("isVerified", user.isVerified());
-//
-//                ApiResponse<Map<String, Object>> res = new ApiResponse<>();
-//                res.setData(responseBuilder);
-//                res.setMessage("Login successful");
-//                res.setSuccess(true);
+                // response.setContentType("application/json");
+                // response.setStatus(HttpServletResponse.SC_OK);
+                // response.setCharacterEncoding("UTF-8");
+                // Map<String, Object> responseBuilder = new HashMap<>();
+                // responseBuilder.put("token", jwtToken);
+                // responseBuilder.put("refreshToken", refreshToken);
+                // responseBuilder.put("userId", user.getId());
+                // responseBuilder.put("isVerified", user.isVerified());
+                //
+                // ApiResponse<Map<String, Object>> res = new ApiResponse<>();
+                // res.setData(responseBuilder);
+                // res.setMessage("Login successful");
+                // res.setSuccess(true);
 
-//                response.getWriter().write(objectMapper.writeValueAsString(res));
+                // response.getWriter().write(objectMapper.writeValueAsString(res));
         }
 }

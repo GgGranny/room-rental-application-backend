@@ -52,14 +52,18 @@ public class AuthController {
 
         @PostMapping("login")
         public ResponseEntity<ApiResponse<AuthResponse>> login(
-                @Valid @RequestBody UserLoginRequestDto entity,
-                HttpServletResponse rs) {
+                        @Valid @RequestBody UserLoginRequestDto entity,
+                        HttpServletResponse rs) {
                 AuthResponse response = authService.login(entity);
 
                 Cookie accessToken = httpCookieComponent.createCookie("accessToken", response.token(), accessTokenAge);
-                Cookie refreshToken = httpCookieComponent.createCookie("refreshToken", response.refreshToken(), refreshTokenAge);
+                Cookie refreshToken = httpCookieComponent.createCookie("refreshToken", response.refreshToken(),
+                                refreshTokenAge);
+                Cookie roleCookie = httpCookieComponent.createCookie("role", response.role().toString(),
+                                accessTokenAge);
                 rs.addCookie(accessToken);
                 rs.addCookie(refreshToken);
+                rs.addCookie(roleCookie);
                 return GlobalResponseHandler.success(
                                 "Login Successful",
                                 response,
@@ -85,28 +89,29 @@ public class AuthController {
                                 HttpStatus.OK);
         }
 
-//        @PostMapping("refresh")
-//        public ResponseEntity<ApiResponse<AuthResponse>> refreshtokenValidation(
-//                        @RequestBody RefreshTokenRequest refreshToken) {
-//                AuthResponse response = authService.refreshToken(refreshToken);
-//                return GlobalResponseHandler.success(
-//                                "Login Successful",
-//                                response,
-//                                HttpStatus.OK);
-//        }
+        // @PostMapping("refresh")
+        // public ResponseEntity<ApiResponse<AuthResponse>> refreshtokenValidation(
+        // @RequestBody RefreshTokenRequest refreshToken) {
+        // AuthResponse response = authService.refreshToken(refreshToken);
+        // return GlobalResponseHandler.success(
+        // "Login Successful",
+        // response,
+        // HttpStatus.OK);
+        // }
 
         @PostMapping("refresh")
         public ResponseEntity<ApiResponse<AuthResponse>> refreshtokenValidation(
-                HttpServletRequest request,
-                HttpServletResponse rs) {
+                        HttpServletRequest request,
+                        HttpServletResponse rs) {
                 String refreshToken = httpCookieComponent.getCookieValue(request, "refreshToken");
-                if(refreshToken == null) {
+                if (refreshToken == null) {
                         throw new TokenNotFoundException("Refresh token is empty");
                 }
 
                 AuthResponse response = authService.refreshToken(refreshToken);
 
-                Cookie newAccessTokenCookie = httpCookieComponent.createCookie("accessToken", response.token(), accessTokenAge);
+                Cookie newAccessTokenCookie = httpCookieComponent.createCookie("accessToken", response.token(),
+                                accessTokenAge);
                 rs.addCookie(newAccessTokenCookie);
                 return GlobalResponseHandler.success(
                                 "New Token Created Successfully",
@@ -143,13 +148,13 @@ public class AuthController {
         }
 
         @GetMapping("/me")
-        public ResponseEntity<ApiResponse<AuthResponse>> getCurrentUser(Authentication authentication) throws Exception{
-            AuthResponse response = authService.getCurrentUser(authentication);
-            return GlobalResponseHandler.success(
-                    "User found successfully",
-                    response,
-                    HttpStatus.OK
-            );
+        public ResponseEntity<ApiResponse<AuthResponse>> getCurrentUser(Authentication authentication)
+                        throws Exception {
+                AuthResponse response = authService.getCurrentUser(authentication);
+                return GlobalResponseHandler.success(
+                                "User found successfully",
+                                response,
+                                HttpStatus.OK);
         }
 
 }
