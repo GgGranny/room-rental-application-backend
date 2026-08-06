@@ -92,7 +92,7 @@ public class AuthServiceImplementation implements AuthService {
         activationTokenRepository.save(activationToken);
 
         String activationUrl = "http://localhost:8000/api/v1/auth/activate?token=" + otp;
-        // publisUserRegisterEvent(savedUser, activationUrl);
+        publisUserRegisterEvent(savedUser, activationUrl);
         return authMapper.toAuthResponse(savedUser, null, null);
     }
 
@@ -309,7 +309,7 @@ public class AuthServiceImplementation implements AuthService {
                 .role(user.getRoles())
                 .isVerifird(user.isVerified())
                 .refreshToken(null)
-                .landlordId(user.getRoles().equals(Roles.ROLE_LANDLORD) ? landlord.getId() : null)
+                .landlordId(Roles.ROLE_LANDLORD.equals(user.getRoles()) && landlord != null ? landlord.getId() : null)
                 .build();
     }
 

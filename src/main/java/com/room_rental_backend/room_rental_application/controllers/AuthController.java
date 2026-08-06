@@ -59,11 +59,15 @@ public class AuthController {
                 Cookie accessToken = httpCookieComponent.createCookie("accessToken", response.token(), accessTokenAge);
                 Cookie refreshToken = httpCookieComponent.createCookie("refreshToken", response.refreshToken(),
                                 refreshTokenAge);
-                Cookie roleCookie = httpCookieComponent.createCookie("role", response.role().toString(),
-                                accessTokenAge);
                 rs.addCookie(accessToken);
                 rs.addCookie(refreshToken);
-                rs.addCookie(roleCookie);
+                // A verified user can log in before completing role selection; do not fail that
+                // flow.
+                if (response.role() != null) {
+                        Cookie roleCookie = httpCookieComponent.createCookie("role", response.role().toString(),
+                                        accessTokenAge);
+                        rs.addCookie(roleCookie);
+                }
                 return GlobalResponseHandler.success(
                                 "Login Successful",
                                 response,
@@ -121,8 +125,14 @@ public class AuthController {
 
         @PostMapping("complete-profile")
         public ResponseEntity<ApiResponse<AuthResponse>> completeUserProfile(
-                        @RequestBody CompleteUserProfileRequest request) {
+                        @RequestBody CompleteUserProfileRequest request,
+                        HttpServletResponse rs) {
                 AuthResponse response = authService.completeUserProfile(request);
+                Cookie accessToken = httpCookieComponent.createCookie("accessToken", response.token(), accessTokenAge);
+                Cookie refreshToken = httpCookieComponent.createCookie("refreshToken", response.refreshToken(),
+                                refreshTokenAge);
+                rs.addCookie(accessToken);
+                rs.addCookie(refreshToken);
                 return GlobalResponseHandler.success(
                                 "Setup successful",
                                 response,

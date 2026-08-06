@@ -174,8 +174,8 @@ public class RoomServiceImplementation implements RoomService {
     }
 
     private List<ImageDataResponse> uploadRoomImages(Room room, List<MultipartFile> roomImages) {
-        if (roomImages.isEmpty() || roomImages == null) {
-            throw new RuntimeException("Room Images not Provided");
+        if (roomImages == null || roomImages.isEmpty()) {
+            return List.of();
         }
         return roomImages
                 .stream()
