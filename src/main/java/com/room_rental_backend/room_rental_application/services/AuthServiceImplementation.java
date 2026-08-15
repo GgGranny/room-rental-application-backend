@@ -188,6 +188,12 @@ public class AuthServiceImplementation implements AuthService {
         Users user = userRepository.findById(request.userId())
                 .orElseThrow(() -> new UserNotFoundException("User not found for id: " + request.userId()));
 
+        // Security: block privilege escalation. The public complete-profile flow must
+        // only ever grant tenant or landlord roles; ROLE_ADMIN is provisioned server-side.
+        if (request.role() == Roles.ROLE_ADMIN) {
+            throw new UnauthorizedException("Admin role cannot be self-assigned");
+        }
+
         // Update fields
         user.setRoles(request.role());
         user.setFname(request.fname());

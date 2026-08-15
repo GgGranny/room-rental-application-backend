@@ -11,6 +11,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.RoomRequest;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.ImageDataResponse;
@@ -18,6 +20,9 @@ import com.room_rental_backend.room_rental_application.dtos.responseDtos.RoomDet
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.RoomResponseDto;
 import com.room_rental_backend.room_rental_application.enums.ImageMetadataTypes;
 import com.room_rental_backend.room_rental_application.enums.RoomStatus;
+import com.room_rental_backend.room_rental_application.enums.KycStatus;
+import com.room_rental_backend.room_rental_application.enums.Roles;
+import com.room_rental_backend.room_rental_application.exceptions.UnauthorizedException;
 import com.room_rental_backend.room_rental_application.interfaces.RoomService;
 import com.room_rental_backend.room_rental_application.interfaces.SupabaseFileStorageService;
 import com.room_rental_backend.room_rental_application.mappers.ImageMetadataMapper;
@@ -25,10 +30,15 @@ import com.room_rental_backend.room_rental_application.mappers.RoomMapper;
 import com.room_rental_backend.room_rental_application.models.ImageMetadata;
 import com.room_rental_backend.room_rental_application.models.Property;
 import com.room_rental_backend.room_rental_application.models.Room;
+import com.room_rental_backend.room_rental_application.models.Landlord;
+import com.room_rental_backend.room_rental_application.models.Users;
 import com.room_rental_backend.room_rental_application.models.filters.RoomSearchFilter;
 import com.room_rental_backend.room_rental_application.repositories.ImageMetadataRepository;
 import com.room_rental_backend.room_rental_application.repositories.PropertyRepository;
 import com.room_rental_backend.room_rental_application.repositories.RoomRepository;
+import com.room_rental_backend.room_rental_application.repositories.LandlordRepository;
+import com.room_rental_backend.room_rental_application.repositories.UserRepository;
+import com.room_rental_backend.room_rental_application.repositories.KycRepository;
 import com.room_rental_backend.room_rental_application.specifications.RoomSpecifications;
 
 import jakarta.el.PropertyNotFoundException;
@@ -50,6 +60,12 @@ public class RoomServiceImplementation implements RoomService {
 
     private final ImageMetadataRepository imageMetadataRepository;
 
+    private final UserRepository userRepository;
+
+    private final LandlordRepository landlordRepository;
+
+    private final KycRepository kycRepository;
+
     @Value("${supabase.public-bucket-name}")
     private String publicBucketName;
 
@@ -60,6 +76,7 @@ public class RoomServiceImplementation implements RoomService {
         if (property == null) {
             throw new PropertyNotFoundException("property for id: " + request.getPropertyId() + " not found");
         }
+        requireVerifiedOwner(property, true);
         Room room = roomMapper.ToEntity(request);
         room.setProperty(property);
         Room savedRoom = roomRepository.save(room);
@@ -73,6 +90,11 @@ public class RoomServiceImplementation implements RoomService {
     public RoomDetailsResponseDto updateRoom(String roomId, RoomRequest request, List<MultipartFile> roomImages,
             List<Long> roomIdsToRemove) {
         Room room = findRoomById(roomId);
+        requireVerifiedOwner(room.getProperty(), false);
+        if (request.getPropertyId() != null && !request.getPropertyId().equals(room.getProperty().getId())) {
+            Property requestedProperty = findPropertyById(request.getPropertyId());
+            requireVerifiedOwner(requestedProperty, false);
+        }
         roomMapper.updateEntity(room, request);
 
         if (request.getPropertyId() != null) {
@@ -108,6 +130,7 @@ public class RoomServiceImplementation implements RoomService {
     @Override
     public RoomDetailsResponseDto updatedRoomStatus(String roomId, String status) {
         Room room = findRoomById(roomId);
+        requireVerifiedOwner(room.getProperty(), false);
         RoomStatus roomStatus = Stream.of(RoomStatus.values())
                 .filter(value -> value.name().equalsIgnoreCase(status))
                 .findFirst()
@@ -121,7 +144,9 @@ public class RoomServiceImplementation implements RoomService {
     @Transactional
     @Override
     public void deleteRoom(String roomId) {
-        roomRepository.delete(findRoomById(roomId));
+        Room room = findRoomById(roomId);
+        requireVerifiedOwner(room.getProperty(), false);
+        roomRepository.delete(room);
     }
 
     @Transactional(readOnly = true)
@@ -193,6 +218,35 @@ public class RoomServiceImplementation implements RoomService {
                 .stream()
                 .map(imageMetadataMapper::toImageDataResponse)
                 .toList();
+    }
+
+    private void requireVerifiedOwner(Property property, boolean requireVerifiedKyc) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new UnauthorizedException("Authentication is required");
+        }
+        Users user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new UnauthorizedException("Authenticated user not found"));
+        if (user.getRoles() != Roles.ROLE_LANDLORD) {
+            throw new UnauthorizedException("Only landlords can manage rooms");
+        }
+        Landlord landlord = landlordRepository.findByUser(user);
+        if (landlord == null || !landlord.getId().equals(property.getLandlord().getId())) {
+            throw new UnauthorizedException("You can only manage rooms in your own properties");
+        }
+        if (!requireVerifiedKyc) {
+            return;
+        }
+        KycStatus status = kycRepository.findByUserId(user.getId()).map(kyc -> kyc.getStatus()).orElse(null);
+        if (status == null) {
+            throw new UnauthorizedException("KYC verification is required before you can post a room. Please complete and verify your KYC first.");
+        }
+        if (status == KycStatus.PENDING) {
+            throw new UnauthorizedException("Your KYC is currently under review. You can post a room after your KYC has been verified.");
+        }
+        if (status != KycStatus.APPROVED) {
+            throw new UnauthorizedException("Your KYC has not been verified. Please update and resubmit your KYC before posting a room.");
+        }
     }
 
 }

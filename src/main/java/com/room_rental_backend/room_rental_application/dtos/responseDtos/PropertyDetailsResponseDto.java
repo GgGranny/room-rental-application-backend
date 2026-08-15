@@ -14,10 +14,10 @@ public class PropertyDetailsResponseDto {
     private String description;
     private String thumbnailUrl;
 
-    private String city;
-    private String district;
-    private String province;
-    private String zipCode;
+    // private String city;
+    // private String district;
+    // private String province;
+    // private String zipCode;
     private String country;
 
     private UserResponse landlord;

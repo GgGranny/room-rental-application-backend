@@ -79,9 +79,9 @@ public class RoomMapper {
                 .rules(Optional.ofNullable(room.getRules()).orElse(new ArrayList<>()))
                 .propertyId(property == null ? null : property.getId())
                 .propertyName(property == null ? null : property.getPropertyName())
-                .city(property == null ? null : property.getCity())
-                .district(property == null ? null : property.getDistrict())
-                .province(property == null ? null : property.getProvince())
+                // .city(property == null ? null : property.getCity())
+                // .district(property == null ? null : property.getDistrict())
+                // .province(property == null ? null : property.getProvince())
                 .build();
     }
 
@@ -103,9 +103,9 @@ public class RoomMapper {
                 .rules(Optional.ofNullable(room.getRules()).orElse(new ArrayList<>()))
                 .propertyId(property == null ? null : property.getId())
                 .propertyName(property == null ? null : property.getPropertyName())
-                .city(property == null ? null : property.getCity())
-                .district(property == null ? null : property.getDistrict())
-                .province(property == null ? null : property.getProvince())
+                // .city(property == null ? null : property.getCity())
+                // .district(property == null ? null : property.getDistrict())
+                // .province(property == null ? null : property.getProvince())
                 .address(room.getAddress())
                 .latitude(room.getLatitude())
                 .Longitude(room.getLongitude())

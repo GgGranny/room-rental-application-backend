@@ -12,6 +12,7 @@ import java.util.stream.Stream;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -237,5 +238,17 @@ public class KycSerciveImplementation implements KycService {
         kyc.setStatus(kycStatus);
         Kyc savedKyc = kycRepository.save(kyc);
         return kycMapper.toResponse(savedKyc);
+    }
+
+    @Override
+    public KycResponse getMyKyc(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new UserNotFoundException("User is not authenticated");
+        }
+        Users user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new UserNotFoundException("Authenticated user not found"));
+        Kyc kyc = kycRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new UserNotFoundException("KYC has not been submitted"));
+        return kycMapper.toResponse(kyc);
     }
 }

@@ -167,4 +167,22 @@ public class AuthController {
                                 HttpStatus.OK);
         }
 
+        // New API: logout endpoint.
+        // The auth tokens live in HttpOnly cookies, so the browser cannot clear them
+        // from JavaScript. This endpoint overwrites accessToken, refreshToken and role
+        // cookies with an immediately-expiring cookie (maxAge = 0) to log the user out.
+        @PostMapping("logout")
+        public ResponseEntity<ApiResponse<Object>> logout(HttpServletResponse rs) {
+                Cookie accessToken = httpCookieComponent.createCookie("accessToken", "", 0);
+                Cookie refreshToken = httpCookieComponent.createCookie("refreshToken", "", 0);
+                Cookie roleCookie = httpCookieComponent.createCookie("role", "", 0);
+                rs.addCookie(accessToken);
+                rs.addCookie(refreshToken);
+                rs.addCookie(roleCookie);
+                return GlobalResponseHandler.success(
+                                "Logout Successful",
+                                null,
+                                HttpStatus.OK);
+        }
+
 }

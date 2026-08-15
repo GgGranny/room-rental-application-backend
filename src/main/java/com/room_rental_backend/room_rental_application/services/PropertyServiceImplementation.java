@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.PropertyRequest;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.PropertyDetailsResponseDto;
@@ -23,6 +25,9 @@ import com.room_rental_backend.room_rental_application.models.Property;
 import com.room_rental_backend.room_rental_application.repositories.LandlordRepository;
 import com.room_rental_backend.room_rental_application.repositories.PropertyRepository;
 import com.room_rental_backend.room_rental_application.repositories.UserRepository;
+import com.room_rental_backend.room_rental_application.models.Users;
+import com.room_rental_backend.room_rental_application.enums.Roles;
+import com.room_rental_backend.room_rental_application.exceptions.UnauthorizedException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -51,6 +56,7 @@ public class PropertyServiceImplementation implements PropertyService {
         Landlord landlord = landlordRepository.findById(String.valueOf(propertyRequest.landlordId()))
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Landlord not found for id: " + propertyRequest.landlordId()));
+        requireOwner(landlord);
 
         String thumbnailUrl = uploadThumbnail(propertyThumbnail);
         Property property = propertyMapper.toEntity(propertyRequest, thumbnailUrl, landlord);
@@ -60,7 +66,9 @@ public class PropertyServiceImplementation implements PropertyService {
 
     @Override
     public List<PropertyResponseDto> fetchAllProperties() {
-        return propertyRepository.findAll()
+        List<Property> properties = isAdmin() ? propertyRepository.findAll()
+                : propertyRepository.findByLandlordId(currentLandlord().getId());
+        return properties
                 .stream()
                 .map(propertyMapper::toPropertyResponseDto)
                 .toList();
@@ -76,15 +84,16 @@ public class PropertyServiceImplementation implements PropertyService {
         Landlord landlord = landlordRepository.findById(String.valueOf(propertyRequest.landlordId()))
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Landlord not found for id: " + propertyRequest.landlordId()));
+        requireOwner(property.getLandlord());
+        requireOwner(landlord);
 
         property.setPropertyName(propertyRequest.propertyName());
         property.setLandlord(landlord);
-        property.setPropertyStatus(propertyRequest.propertyStatus());
         property.setDescription(propertyRequest.description());
-        property.setCity(propertyRequest.city());
-        property.setDistrict(propertyRequest.district());
-        property.setProvince(propertyRequest.province());
-        property.setZipCode(propertyRequest.zipCode());
+        // property.setCity(propertyRequest.city());
+        // property.setDistrict(propertyRequest.district());
+        // property.setProvince(propertyRequest.province());
+        // property.setZipCode(propertyRequest.zipCode());
         property.setCountry(propertyRequest.country());
 
         if (propertyThumbnail != null && !propertyThumbnail.isEmpty()) {
@@ -100,12 +109,17 @@ public class PropertyServiceImplementation implements PropertyService {
 
     @Override
     public PropertyDetailsResponseDto fetchPropertyDetails(String propertyId) {
-        return propertyMapper.toPropertyDetailsResponseDto(findPropertyById(propertyId));
+        Property property = findPropertyById(propertyId);
+        requireOwner(property.getLandlord());
+        return propertyMapper.toPropertyDetailsResponseDto(property);
     }
 
     @Transactional
     @Override
     public PropertyResponseDto updatedPropertyStatus(String propertyId, String status) {
+        if (!isAdmin()) {
+            throw new UnauthorizedException("Only an administrator can change property verification status");
+        }
         Property property = findPropertyById(propertyId);
         PropertyStatus propertyStatus = Stream.of(PropertyStatus.values())
                 .filter(value -> value.name().equalsIgnoreCase(status))
@@ -120,6 +134,7 @@ public class PropertyServiceImplementation implements PropertyService {
     @Override
     public boolean deleteProperty(String propertyId) {
         Property property = findPropertyById(propertyId);
+        requireOwner(property.getLandlord());
         ImageMetadata imageMetadata = imageMetadataRepository.findByUser(property.getLandlord().getUser());
         if (imageMetadata != null) {
             supabaseFileStorageService.deleteFile(imageMetadata.getId(), publicBucket);
@@ -138,6 +153,35 @@ public class PropertyServiceImplementation implements PropertyService {
             return null;
         }
         return supabaseFileStorageService.uploadFile(propertyThumbnail, "property", "public", "PROPERTY").getUrl();
+    }
+
+    private Landlord currentLandlord() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new UnauthorizedException("Authentication is required");
+        }
+        Users user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new UnauthorizedException("Authenticated user not found"));
+        if (user.getRoles() != Roles.ROLE_LANDLORD) {
+            throw new UnauthorizedException("Only landlords can manage properties");
+        }
+        Landlord landlord = landlordRepository.findByUser(user);
+        if (landlord == null) {
+            throw new UnauthorizedException("Landlord profile not found");
+        }
+        return landlord;
+    }
+
+    private boolean isAdmin() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+    }
+
+    private void requireOwner(Landlord landlord) {
+        if (!isAdmin() && !currentLandlord().getId().equals(landlord.getId())) {
+            throw new UnauthorizedException("You can only manage your own properties");
+        }
     }
 
 }
