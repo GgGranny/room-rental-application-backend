@@ -222,6 +222,8 @@ public class KycSerciveImplementation implements KycService {
                 throw new IllegalArgumentException(message);
             }
             return kycData;
+        } catch (IllegalArgumentException ex) {
+            throw ex;
         } catch (Exception ex) {
             throw new IllegalArgumentException("kycData must be valid JSON");
         }
