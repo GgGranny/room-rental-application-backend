@@ -8,24 +8,24 @@ import lombok.Builder;
 
 @Builder
 public record PropertyRequest(
-                @NotBlank String propertyName,
+        @NotBlank String propertyName,
 
-                @NotNull String landlordId,
+        @NotNull String landlordId,
 
-                @NotNull PropertyStatus propertyStatus,
+        @NotNull PropertyStatus propertyStatus,
 
-                @NotBlank String description,
+        @NotBlank String description,
 
-                // @NotBlank String address,
+        // @NotBlank String address,
 
-                @NotBlank String city,
+        // @NotBlank String city,
 
-                @NotBlank String district,
+        // @NotBlank String district,
 
-                @NotBlank String province,
+        // @NotBlank String province,
 
-                @NotBlank String zipCode,
+        // @NotBlank String zipCode,
 
-                @NotBlank String country) {
+        @NotBlank String country) {
 
 }

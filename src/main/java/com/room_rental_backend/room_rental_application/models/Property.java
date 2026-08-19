@@ -52,19 +52,18 @@ public class Property extends BaseEntity {
     // @Column(name = "address", nullable = false)
     // private String address;
 
-    @Column(name = "city", nullable = false)
-    private String city;
+    // @Column(name = "city", nullable = false)
+    // private String city;
 
-    @Column(name = "district", nullable = false)
-    private String district;
+    // @Column(name = "district", nullable = false)
+    // private String district;
 
-    @Column(name = "province", nullable = false)
-    private String province;
+    // @Column(name = "province", nullable = false)
+    // private String province;
 
-    @Column(name = "zip_code", nullable = false)
-    private String zipCode;
+    // @Column(name = "zip_code", nullable = false)
+    // private String zipCode;
 
     @Column(name = "country", nullable = false)
     private String country;
-
 }

@@ -52,14 +52,22 @@ public class AuthController {
 
         @PostMapping("login")
         public ResponseEntity<ApiResponse<AuthResponse>> login(
-                @Valid @RequestBody UserLoginRequestDto entity,
-                HttpServletResponse rs) {
+                        @Valid @RequestBody UserLoginRequestDto entity,
+                        HttpServletResponse rs) {
                 AuthResponse response = authService.login(entity);
 
                 Cookie accessToken = httpCookieComponent.createCookie("accessToken", response.token(), accessTokenAge);
-                Cookie refreshToken = httpCookieComponent.createCookie("refreshToken", response.refreshToken(), refreshTokenAge);
+                Cookie refreshToken = httpCookieComponent.createCookie("refreshToken", response.refreshToken(),
+                                refreshTokenAge);
                 rs.addCookie(accessToken);
                 rs.addCookie(refreshToken);
+                // A verified user can log in before completing role selection; do not fail that
+                // flow.
+                if (response.role() != null) {
+                        Cookie roleCookie = httpCookieComponent.createCookie("role", response.role().toString(),
+                                        accessTokenAge);
+                        rs.addCookie(roleCookie);
+                }
                 return GlobalResponseHandler.success(
                                 "Login Successful",
                                 response,
@@ -85,28 +93,29 @@ public class AuthController {
                                 HttpStatus.OK);
         }
 
-//        @PostMapping("refresh")
-//        public ResponseEntity<ApiResponse<AuthResponse>> refreshtokenValidation(
-//                        @RequestBody RefreshTokenRequest refreshToken) {
-//                AuthResponse response = authService.refreshToken(refreshToken);
-//                return GlobalResponseHandler.success(
-//                                "Login Successful",
-//                                response,
-//                                HttpStatus.OK);
-//        }
+        // @PostMapping("refresh")
+        // public ResponseEntity<ApiResponse<AuthResponse>> refreshtokenValidation(
+        // @RequestBody RefreshTokenRequest refreshToken) {
+        // AuthResponse response = authService.refreshToken(refreshToken);
+        // return GlobalResponseHandler.success(
+        // "Login Successful",
+        // response,
+        // HttpStatus.OK);
+        // }
 
         @PostMapping("refresh")
         public ResponseEntity<ApiResponse<AuthResponse>> refreshtokenValidation(
-                HttpServletRequest request,
-                HttpServletResponse rs) {
+                        HttpServletRequest request,
+                        HttpServletResponse rs) {
                 String refreshToken = httpCookieComponent.getCookieValue(request, "refreshToken");
-                if(refreshToken == null) {
+                if (refreshToken == null) {
                         throw new TokenNotFoundException("Refresh token is empty");
                 }
 
                 AuthResponse response = authService.refreshToken(refreshToken);
 
-                Cookie newAccessTokenCookie = httpCookieComponent.createCookie("accessToken", response.token(), accessTokenAge);
+                Cookie newAccessTokenCookie = httpCookieComponent.createCookie("accessToken", response.token(),
+                                accessTokenAge);
                 rs.addCookie(newAccessTokenCookie);
                 return GlobalResponseHandler.success(
                                 "New Token Created Successfully",
@@ -116,8 +125,14 @@ public class AuthController {
 
         @PostMapping("complete-profile")
         public ResponseEntity<ApiResponse<AuthResponse>> completeUserProfile(
-                        @RequestBody CompleteUserProfileRequest request) {
+                        @RequestBody CompleteUserProfileRequest request,
+                        HttpServletResponse rs) {
                 AuthResponse response = authService.completeUserProfile(request);
+                Cookie accessToken = httpCookieComponent.createCookie("accessToken", response.token(), accessTokenAge);
+                Cookie refreshToken = httpCookieComponent.createCookie("refreshToken", response.refreshToken(),
+                                refreshTokenAge);
+                rs.addCookie(accessToken);
+                rs.addCookie(refreshToken);
                 return GlobalResponseHandler.success(
                                 "Setup successful",
                                 response,
@@ -143,13 +158,31 @@ public class AuthController {
         }
 
         @GetMapping("/me")
-        public ResponseEntity<ApiResponse<AuthResponse>> getCurrentUser(Authentication authentication) throws Exception{
-            AuthResponse response = authService.getCurrentUser(authentication);
-            return GlobalResponseHandler.success(
-                    "User found successfully",
-                    response,
-                    HttpStatus.OK
-            );
+        public ResponseEntity<ApiResponse<AuthResponse>> getCurrentUser(Authentication authentication)
+                        throws Exception {
+                AuthResponse response = authService.getCurrentUser(authentication);
+                return GlobalResponseHandler.success(
+                                "User found successfully",
+                                response,
+                                HttpStatus.OK);
+        }
+
+        // New API: logout endpoint.
+        // The auth tokens live in HttpOnly cookies, so the browser cannot clear them
+        // from JavaScript. This endpoint overwrites accessToken, refreshToken and role
+        // cookies with an immediately-expiring cookie (maxAge = 0) to log the user out.
+        @PostMapping("logout")
+        public ResponseEntity<ApiResponse<Object>> logout(HttpServletResponse rs) {
+                Cookie accessToken = httpCookieComponent.createCookie("accessToken", "", 0);
+                Cookie refreshToken = httpCookieComponent.createCookie("refreshToken", "", 0);
+                Cookie roleCookie = httpCookieComponent.createCookie("role", "", 0);
+                rs.addCookie(accessToken);
+                rs.addCookie(refreshToken);
+                rs.addCookie(roleCookie);
+                return GlobalResponseHandler.success(
+                                "Logout Successful",
+                                null,
+                                HttpStatus.OK);
         }
 
 }

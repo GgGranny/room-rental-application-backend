@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.Authentication;
 
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.KycResponse;
 
@@ -18,4 +19,6 @@ public interface KycService {
     void deleteKyc(Integer kycId);
 
     KycResponse updateKycStatus(Integer kycId, String status);
+
+    KycResponse getMyKyc(Authentication authentication);
 }

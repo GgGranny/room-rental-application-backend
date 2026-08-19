@@ -92,7 +92,7 @@ public class AuthServiceImplementation implements AuthService {
         activationTokenRepository.save(activationToken);
 
         String activationUrl = "http://localhost:8000/api/v1/auth/activate?token=" + otp;
-        // publisUserRegisterEvent(savedUser, activationUrl);
+        publisUserRegisterEvent(savedUser, activationUrl);
         return authMapper.toAuthResponse(savedUser, null, null);
     }
 
@@ -187,6 +187,12 @@ public class AuthServiceImplementation implements AuthService {
 
         Users user = userRepository.findById(request.userId())
                 .orElseThrow(() -> new UserNotFoundException("User not found for id: " + request.userId()));
+
+        // Security: block privilege escalation. The public complete-profile flow must
+        // only ever grant tenant or landlord roles; ROLE_ADMIN is provisioned server-side.
+        if (request.role() == Roles.ROLE_ADMIN) {
+            throw new UnauthorizedException("Admin role cannot be self-assigned");
+        }
 
         // Update fields
         user.setRoles(request.role());
@@ -309,7 +315,7 @@ public class AuthServiceImplementation implements AuthService {
                 .role(user.getRoles())
                 .isVerifird(user.isVerified())
                 .refreshToken(null)
-                .landlordId(user.getRoles().equals(Roles.ROLE_LANDLORD) ? landlord.getId() : null)
+                .landlordId(Roles.ROLE_LANDLORD.equals(user.getRoles()) && landlord != null ? landlord.getId() : null)
                 .build();
     }
 

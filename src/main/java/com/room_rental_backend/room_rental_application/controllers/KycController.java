@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.Authentication;
 
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.KycResponse;
 import com.room_rental_backend.room_rental_application.interfaces.KycService;
@@ -30,6 +31,14 @@ import lombok.RequiredArgsConstructor;
 public class KycController {
 
     private final KycService kycSerciveImplementation;
+
+    // New API: returns only the authenticated tenant/landlord's KYC record for
+    // client-side status guidance. KYC documents remain protected by existing access rules.
+    @GetMapping("/status")
+    public ResponseEntity<ApiResponse<KycResponse>> getMyKyc(Authentication authentication) {
+        KycResponse response = kycSerciveImplementation.getMyKyc(authentication);
+        return GlobalResponseHandler.success("KYC status fetched successfully", response, HttpStatus.OK);
+    }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<KycResponse>> createKyc(

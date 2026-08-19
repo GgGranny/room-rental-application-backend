@@ -2,6 +2,7 @@ package com.room_rental_backend.room_rental_application.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -56,7 +57,9 @@ public class SpringSecurity {
                 .authorizeHttpRequests(request -> request
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers("/api/v1/rooms/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/rooms/**").permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/api/v1/rooms/**").hasRole("LANDLORD")
 
                         .requestMatchers("/oauth2/**").permitAll()
                         .requestMatchers("/login/oauth2/**").permitAll()

@@ -38,4 +38,6 @@ public class RoomResponseDto {
     private String city;
     private String district;
     private String province;
+
+    private boolean featured;
 }
