@@ -21,10 +21,12 @@ import com.room_rental_backend.room_rental_application.dtos.requestDtos.KycReque
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.KycResponse;
 import com.room_rental_backend.room_rental_application.enums.ImageMetadataTypes;
 import com.room_rental_backend.room_rental_application.enums.KycStatus;
+import com.room_rental_backend.room_rental_application.enums.NotificationType;
 import com.room_rental_backend.room_rental_application.exceptions.KycFailedException;
 import com.room_rental_backend.room_rental_application.exceptions.UserNotFoundException;
 import com.room_rental_backend.room_rental_application.interfaces.FileService;
 import com.room_rental_backend.room_rental_application.interfaces.KycService;
+import com.room_rental_backend.room_rental_application.interfaces.NotificationService;
 import com.room_rental_backend.room_rental_application.interfaces.SupabaseFileStorageService;
 import com.room_rental_backend.room_rental_application.interfaces.UserService;
 import com.room_rental_backend.room_rental_application.mappers.KycMapper;
@@ -69,6 +71,8 @@ public class KycSerciveImplementation implements KycService {
     private final SupabaseFileStorageService supabaseFileStorageService;
 
     private final ImageMetadataRepository imageMetadataRepository;
+
+    private final NotificationService notificationService;
 
     @PostConstruct()
     void init() throws IOException {
@@ -239,6 +243,19 @@ public class KycSerciveImplementation implements KycService {
                 .orElseThrow(() -> new IllegalArgumentException("Invalid KYC status: " + status));
         kyc.setStatus(kycStatus);
         Kyc savedKyc = kycRepository.save(kyc);
+
+        // Push: notify the KYC owner about the admin's decision.
+        Users owner = savedKyc.getUser();
+        if (kycStatus == KycStatus.APPROVED) {
+            notificationService.sendToUser(owner, "KYC Approved",
+                    "Your KYC verification has been approved. You can now post rooms.",
+                    NotificationType.KYC_APPROVED, String.valueOf(savedKyc.getId()));
+        } else if (kycStatus == KycStatus.REJECTED) {
+            notificationService.sendToUser(owner, "KYC Rejected",
+                    "Your KYC verification was rejected. Please resubmit with correct documents.",
+                    NotificationType.KYC_REJECTED, String.valueOf(savedKyc.getId()));
+        }
+
         return kycMapper.toResponse(savedKyc);
     }
 

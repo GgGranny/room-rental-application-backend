@@ -27,10 +27,12 @@ import com.room_rental_backend.room_rental_application.dtos.requestDtos.PaymentI
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.PaymentVerifyRequest;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.PaymentInitiateResponse;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.PaymentResponseDto;
+import com.room_rental_backend.room_rental_application.enums.NotificationType;
 import com.room_rental_backend.room_rental_application.enums.PaymentGateway;
 import com.room_rental_backend.room_rental_application.enums.PaymentStatus;
 import com.room_rental_backend.room_rental_application.exceptions.UnauthorizedException;
 import com.room_rental_backend.room_rental_application.exceptions.UserNotFoundException;
+import com.room_rental_backend.room_rental_application.interfaces.NotificationService;
 import com.room_rental_backend.room_rental_application.interfaces.PaymentService;
 import com.room_rental_backend.room_rental_application.mappers.PaymentMapper;
 import com.room_rental_backend.room_rental_application.models.Landlord;
@@ -58,6 +60,7 @@ public class PaymentServiceImplementation implements PaymentService {
     private final UserRepository userRepository;
     private final PaymentMapper paymentMapper;
     private final RestTemplate restTemplate;
+    private final NotificationService notificationService;
 
     @Value("${app.payment.featured.amount}")
     private BigDecimal featuredAmount;
@@ -206,6 +209,11 @@ public class PaymentServiceImplementation implements PaymentService {
         if (!paid) {
             payment.setStatus(PaymentStatus.FAILED);
             paymentRepository.save(payment);
+            // Push: let the landlord know the payment did not go through.
+            notificationService.sendToUser(user, "Payment Failed",
+                    "Your featured-listing payment for \"" + payment.getProperty().getPropertyName()
+                            + "\" failed. Please try again.",
+                    NotificationType.PAYMENT_FAILED, payment.getId());
             throw new IllegalArgumentException("Payment was not completed at the gateway");
         }
 
@@ -214,6 +222,13 @@ public class PaymentServiceImplementation implements PaymentService {
         paymentRepository.save(payment);
 
         featureProperty(payment);
+
+        // Push: confirm the featured-listing payment succeeded.
+        notificationService.sendToUser(user, "Payment Successful",
+                "Your featured-listing payment for \"" + payment.getProperty().getPropertyName()
+                        + "\" was successful.",
+                NotificationType.PAYMENT_SUCCESS, payment.getId());
+
         return paymentMapper.toResponse(payment);
     }
 

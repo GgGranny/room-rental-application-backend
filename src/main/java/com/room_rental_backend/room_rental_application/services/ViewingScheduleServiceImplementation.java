@@ -8,9 +8,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.ViewingScheduleRequest;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.ViewingScheduleResponseDto;
+import com.room_rental_backend.room_rental_application.enums.NotificationType;
 import com.room_rental_backend.room_rental_application.enums.ScheduleStatus;
 import com.room_rental_backend.room_rental_application.exceptions.UnauthorizedException;
 import com.room_rental_backend.room_rental_application.exceptions.UserNotFoundException;
+import com.room_rental_backend.room_rental_application.interfaces.NotificationService;
 import com.room_rental_backend.room_rental_application.interfaces.ViewingScheduleService;
 import com.room_rental_backend.room_rental_application.mappers.ViewingScheduleMapper;
 import com.room_rental_backend.room_rental_application.models.Landlord;
@@ -38,6 +40,7 @@ public class ViewingScheduleServiceImplementation implements ViewingScheduleServ
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final ViewingScheduleMapper scheduleMapper;
+    private final NotificationService notificationService;
 
     @Transactional
     @Override
@@ -74,7 +77,16 @@ public class ViewingScheduleServiceImplementation implements ViewingScheduleServ
                 .status(ScheduleStatus.PENDING)
                 .build();
 
-        return scheduleMapper.toResponse(scheduleRepository.save(schedule));
+        ViewingSchedule saved = scheduleRepository.save(schedule);
+
+        // Push: notify the landlord about the new viewing request.
+        Users owner = landlord.getUser();
+        notificationService.sendToUser(owner, "New Viewing Request",
+                tenantDisplayName(tenant) + " has requested to view \"" + room.getRoomTitle() + "\" on "
+                        + schedule.getScheduledAt(),
+                NotificationType.VIEWING_REQUEST, saved.getId());
+
+        return scheduleMapper.toResponse(saved);
     }
 
     @Override
@@ -125,6 +137,22 @@ public class ViewingScheduleServiceImplementation implements ViewingScheduleServ
         schedule.setResponseNote(responseNote);
         ViewingSchedule saved = scheduleRepository.save(schedule);
 
+        // Push: notify the tenant about the landlord's decision.
+        Users tenant = schedule.getTenant();
+        String roomTitle = schedule.getRoom() != null ? schedule.getRoom().getRoomTitle() : "room";
+        if (target == ScheduleStatus.APPROVED) {
+            notificationService.sendToUser(tenant, "Viewing Request Accepted",
+                    "Your viewing request for \"" + roomTitle + "\" on " + schedule.getScheduledAt()
+                            + " has been approved.",
+                    NotificationType.VIEWING_ACCEPTED, schedule.getId());
+        } else {
+            notificationService.sendToUser(tenant, "Viewing Request Rejected",
+                    "Your viewing request for \"" + roomTitle + "\" on " + schedule.getScheduledAt()
+                            + " was rejected."
+                            + (responseNote != null && !responseNote.isBlank() ? " Reason: " + responseNote : ""),
+                    NotificationType.VIEWING_REJECTED, schedule.getId());
+        }
+
         // When a slot is APPROVED, automatically reject all other PENDING requests for the exact same room and slot.
         if (target == ScheduleStatus.APPROVED) {
             List<ViewingSchedule> conflicts = scheduleRepository.findByRoomAndScheduledAtAndStatusAndIdNot(
@@ -132,7 +160,12 @@ public class ViewingScheduleServiceImplementation implements ViewingScheduleServ
             for (ViewingSchedule conflict : conflicts) {
                 conflict.setStatus(ScheduleStatus.REJECTED);
                 conflict.setResponseNote("Slot automatically rejected due to another approved viewing request at this time");
-                scheduleRepository.save(conflict);
+                ViewingSchedule rejectedConflict = scheduleRepository.save(conflict);
+                // Push: let the affected tenant know their pending request lost the slot.
+                notificationService.sendToUser(rejectedConflict.getTenant(), "Viewing Request Rejected",
+                        "Your viewing request for \"" + roomTitle + "\" on " + rejectedConflict.getScheduledAt()
+                                + " was rejected: " + rejectedConflict.getResponseNote(),
+                        NotificationType.VIEWING_REJECTED, rejectedConflict.getId());
             }
         }
 
@@ -155,7 +188,17 @@ public class ViewingScheduleServiceImplementation implements ViewingScheduleServ
         }
 
         schedule.setStatus(ScheduleStatus.CANCELLED);
-        return scheduleMapper.toResponse(scheduleRepository.save(schedule));
+        ViewingSchedule saved = scheduleRepository.save(schedule);
+
+        // Push: notify the landlord that the tenant cancelled the request.
+        String roomTitle = schedule.getRoom() != null ? schedule.getRoom().getRoomTitle() : "room";
+        notificationService.sendToUser(schedule.getLandlord() != null ? schedule.getLandlord().getUser() : null,
+                "Viewing Request Cancelled",
+                tenantDisplayName(tenant) + " cancelled the viewing request for \"" + roomTitle + "\" on "
+                        + schedule.getScheduledAt(),
+                NotificationType.VIEWING_CANCELLED, saved.getId());
+
+        return scheduleMapper.toResponse(saved);
     }
 
     // Resolve the authenticated principal to a persisted user, or fail.
@@ -166,6 +209,16 @@ public class ViewingScheduleServiceImplementation implements ViewingScheduleServ
         String email = authentication.getName();
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("User not found for email: " + email));
+    }
+
+    private String tenantDisplayName(Users user) {
+        if (user == null) {
+            return "A tenant";
+        }
+        String first = user.getFname() == null ? "" : user.getFname();
+        String last = user.getLname() == null ? "" : user.getLname();
+        String name = (first + " " + last).trim();
+        return name.isEmpty() ? user.getEmail() : name;
     }
 
     private ScheduleStatus parseStatus(String status) {
