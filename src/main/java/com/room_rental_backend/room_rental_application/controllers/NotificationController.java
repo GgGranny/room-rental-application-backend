@@ -8,6 +8,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import java.util.List;
 
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.RegisterTokenRequest;
 import com.room_rental_backend.room_rental_application.exceptions.UnauthorizedException;
@@ -17,6 +21,7 @@ import com.room_rental_backend.room_rental_application.models.Users;
 import com.room_rental_backend.room_rental_application.repositories.UserRepository;
 import com.room_rental_backend.room_rental_application.responseHandler.ApiResponse;
 import com.room_rental_backend.room_rental_application.responseHandler.GlobalResponseHandler;
+import com.room_rental_backend.room_rental_application.dtos.responseDtos.UserNotificationResponse;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -55,6 +60,20 @@ public class NotificationController {
             notificationService.unregisterAllTokens(user);
         }
         return GlobalResponseHandler.success("Notification token removed successfully", null, HttpStatus.OK);
+    }
+
+    // New API: authenticated users can view their own in-app notification history.
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<UserNotificationResponse>>> getNotifications(Authentication authentication) {
+        return GlobalResponseHandler.success("Notifications fetched successfully",
+                notificationService.getNotifications(resolveUser(authentication)), HttpStatus.OK);
+    }
+
+    // New API: a user may only mark one of their own notifications as read.
+    @PatchMapping("/{notificationId}/read")
+    public ResponseEntity<ApiResponse<Void>> markRead(@PathVariable String notificationId, Authentication authentication) {
+        notificationService.markRead(resolveUser(authentication), notificationId);
+        return GlobalResponseHandler.success("Notification marked as read", null, HttpStatus.OK);
     }
 
     private Users resolveUser(Authentication authentication) {

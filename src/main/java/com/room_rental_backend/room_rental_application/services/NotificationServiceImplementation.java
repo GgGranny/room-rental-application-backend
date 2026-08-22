@@ -13,6 +13,9 @@ import com.room_rental_backend.room_rental_application.interfaces.NotificationSe
 import com.room_rental_backend.room_rental_application.models.DeviceToken;
 import com.room_rental_backend.room_rental_application.models.Users;
 import com.room_rental_backend.room_rental_application.repositories.DeviceTokenRepository;
+import com.room_rental_backend.room_rental_application.repositories.UserNotificationRepository;
+import com.room_rental_backend.room_rental_application.models.UserNotification;
+import com.room_rental_backend.room_rental_application.dtos.responseDtos.UserNotificationResponse;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +29,7 @@ public class NotificationServiceImplementation implements NotificationService {
 
     private final DeviceTokenRepository deviceTokenRepository;
     private final FcmSender fcmSender;
+    private final UserNotificationRepository userNotificationRepository;
 
     @Transactional
     @Override
@@ -72,6 +76,8 @@ public class NotificationServiceImplementation implements NotificationService {
         if (user == null) {
             return;
         }
+        userNotificationRepository.save(UserNotification.builder().user(user).title(title).body(body)
+                .type(type).referenceId(referenceId).build());
         List<DeviceToken> tokens = deviceTokenRepository.findByUserAndActiveTrue(user);
         if (tokens.isEmpty()) {
             return;
@@ -90,6 +96,26 @@ public class NotificationServiceImplementation implements NotificationService {
         send(DeviceToken.builder().token(token).active(true).build(), title, body, buildData(type, referenceId));
     }
 
+    @Override
+    public List<UserNotificationResponse> getNotifications(Users user) {
+        return userNotificationRepository.findTop50ByUserOrderByCreatedAtDesc(user).stream()
+                .map(item -> new UserNotificationResponse(item.getId(), item.getTitle(), item.getBody(), item.getType(),
+                        item.getReferenceId(), item.isRead(), item.getCreatedAt()))
+                .toList();
+    }
+
+    @Transactional
+    @Override
+    public void markRead(Users user, String notificationId) {
+        UserNotification notification = userNotificationRepository.findById(notificationId)
+                .orElseThrow(() -> new IllegalArgumentException("Notification not found"));
+        if (!notification.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("Notification does not belong to the authenticated user");
+        }
+        notification.setRead(true);
+        userNotificationRepository.save(notification);
+    }
+
     private void send(DeviceToken deviceToken, String title, String body, Map<String, String> data) {
         try {
             fcmSender.send(deviceToken.getToken(), title, body, data);
@@ -98,7 +124,8 @@ public class NotificationServiceImplementation implements NotificationService {
             if (deviceToken.getId() != null) {
                 deviceToken.setActive(false);
                 deviceTokenRepository.save(deviceToken);
-                log.info("Deactivated invalid FCM token for user {}", deviceToken.getUser() != null ? deviceToken.getUser().getId() : "unknown");
+                log.info("Deactivated invalid FCM token for user {}",
+                        deviceToken.getUser() != null ? deviceToken.getUser().getId() : "unknown");
             } else {
                 log.info("Ignoring invalid FCM token (not persisted): {}", e.getMessage());
             }
