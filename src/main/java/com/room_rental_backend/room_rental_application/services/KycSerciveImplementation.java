@@ -2,6 +2,7 @@ package com.room_rental_backend.room_rental_application.services;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -90,18 +91,36 @@ public class KycSerciveImplementation implements KycService {
         }
     }
 
+    // State machine: no record -> create PENDING; PENDING/APPROVED -> duplicate
+    // rejected; REJECTED -> resubmit on the SAME record (REJECTED -> PENDING).
+    // The KYC owner is always resolved from the authenticated principal — the
+    // customerId sent by the client is never trusted.
     @Override
     public KycResponse submitKyc(String request, MultipartFile frontImage, MultipartFile backImage,
-            MultipartFile selfie) {
+            MultipartFile selfie, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new UserNotFoundException("User is not authenticated");
+        }
         KycRequest kycData = readAndValidateKycData(request);
-        if (kycRepository.existsByUserId(kycData.getCustomerId())) {
-            throw new KycFailedException("KYC has already been submitted for this user");
+        Users kycOwner = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new UserNotFoundException("Authenticated user not found"));
+        kycData.setCustomerId(kycOwner.getId());
+
+        Kyc existingKyc = kycRepository.findByUserId(kycOwner.getId()).orElse(null);
+        boolean resubmission = existingKyc != null;
+        if (resubmission) {
+            KycStatus currentStatus = existingKyc.getStatus();
+            if (currentStatus == KycStatus.PENDING) {
+                throw new KycFailedException("Your KYC is already under review");
+            }
+            if (currentStatus == KycStatus.APPROVED) {
+                throw new KycFailedException("Your KYC has already been approved");
+            }
+            // REJECTED falls through: resubmission is allowed.
         }
 
-        // String frontImageUrl = fileService.uploadFile(frontImage);
-        // String backImageUrl = uploadOptionalFile(backImage);
-        // String selfieUrl = fileService.uploadFile(selfie);
-
+        // Upload the replacement documents first so a failed upload can never
+        // leave the existing submission broken or without its stored files.
         String frontImageUrl = supabaseFileStorageService.uploadFile(frontImage, "kyc", "private", "KYC").getUrl();
         String backImageUrl = backImage != null && !backImage.isEmpty()
                 ? supabaseFileStorageService.uploadFile(backImage, "kyc", "private", "KYC").getUrl()
@@ -115,21 +134,51 @@ public class KycSerciveImplementation implements KycService {
                 .selfieUrl(selfieUrl)
                 .build();
         kycData.setDocument(documentDataReqeust);
-        Users kycOwner = userRepository.findById(kycData.getCustomerId())
-                .orElseThrow(() -> new UserNotFoundException("User  not found for id: " + kycData.getCustomerId()));
 
-        Kyc newKyc = kycMapper.toEntity(kycData);
-        newKyc.setUser(kycOwner);
-        newKyc.setStatus(KycStatus.PENDING);
+        Kyc savedKyc;
+        if (resubmission) {
+            List<String> replacedUrls = Stream.of(
+                    existingKyc.getFrontImageUrl(),
+                    existingKyc.getBackImageUrl(),
+                    existingKyc.getSelfieUrl())
+                    .filter(path -> path != null && !path.isEmpty())
+                    .collect(Collectors.toList());
+            kycMapper.updateEntity(existingKyc, kycData);
+            existingKyc.setFrontImageUrl(frontImageUrl);
+            existingKyc.setBackImageUrl(backImageUrl);
+            existingKyc.setSelfieUrl(selfieUrl);
+            existingKyc.setStatus(KycStatus.PENDING);
+            existingKyc.setSubmittedAt(LocalDateTime.now());
+            savedKyc = kycRepository.save(existingKyc);
+            // Best-effort cleanup of the replaced documents after the record is safe.
+            deleteReplacedKycDocuments(kycOwner.getId(), replacedUrls);
+        } else {
+            Kyc newKyc = kycMapper.toEntity(kycData);
+            newKyc.setUser(kycOwner);
+            newKyc.setStatus(KycStatus.PENDING);
+            savedKyc = kycRepository.save(newKyc);
+        }
 
-        Kyc savedKyc = kycRepository.save(newKyc);
         if (savedKyc != null) {
-            KycResponse response = kycMapper.toResponse(savedKyc);
-            return response;
+            return kycMapper.toResponse(savedKyc);
         }
         return KycResponse.builder()
                 .customerId(kycOwner.getId())
                 .build();
+    }
+
+    // KYC documents are tracked as ImageMetadata rows (type KYC); delete the rows
+    // matching the replaced URLs, then remove the underlying storage objects.
+    private void deleteReplacedKycDocuments(String userId, List<String> replacedUrls) {
+        if (replacedUrls.isEmpty()) {
+            return;
+        }
+        try {
+            imageMetadataRepository.findAllByUserIdAndMetadataTypeAndUrlIn(userId, ImageMetadataTypes.KYC, replacedUrls)
+                    .forEach(metadata -> supabaseFileStorageService.deleteFile(metadata.getId(), "private"));
+        } catch (RuntimeException ex) {
+            log.warn("Failed to clean up replaced KYC documents for user {}", userId, ex);
+        }
     }
 
     @Override

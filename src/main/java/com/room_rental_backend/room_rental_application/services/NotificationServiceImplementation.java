@@ -116,6 +116,14 @@ public class NotificationServiceImplementation implements NotificationService {
         userNotificationRepository.save(notification);
     }
 
+    @Transactional
+    @Override
+    public void markAllRead(Users user) {
+        List<UserNotification> unread = userNotificationRepository.findByUserAndReadFalse(user);
+        unread.forEach(item -> item.setRead(true));
+        userNotificationRepository.saveAll(unread);
+    }
+
     private void send(DeviceToken deviceToken, String title, String body, Map<String, String> data) {
         try {
             fcmSender.send(deviceToken.getToken(), title, body, data);

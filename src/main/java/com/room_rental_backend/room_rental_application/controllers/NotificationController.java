@@ -76,6 +76,13 @@ public class NotificationController {
         return GlobalResponseHandler.success("Notification marked as read", null, HttpStatus.OK);
     }
 
+    // New API: mark every unread notification of the authenticated user as read.
+    @PatchMapping("/read-all")
+    public ResponseEntity<ApiResponse<Void>> markAllRead(Authentication authentication) {
+        notificationService.markAllRead(resolveUser(authentication));
+        return GlobalResponseHandler.success("All notifications marked as read", null, HttpStatus.OK);
+    }
+
     private Users resolveUser(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new UnauthorizedException("Not authenticated");

@@ -7,4 +7,6 @@ import com.room_rental_backend.room_rental_application.models.Users;
 
 public interface UserNotificationRepository extends JpaRepository<UserNotification, String> {
     List<UserNotification> findTop50ByUserOrderByCreatedAtDesc(Users user);
+
+    List<UserNotification> findByUserAndReadFalse(Users user);
 }

@@ -45,8 +45,10 @@ public class KycController {
             @RequestPart("kycData") String kycDataJson,
             @RequestPart("frontImage") MultipartFile frontImage,
             @RequestPart(value = "backImage", required = false) MultipartFile backImage,
-            @RequestPart("selfieImage") MultipartFile selfie) {
-        KycResponse response = kycSerciveImplementation.submitKyc(kycDataJson, frontImage, backImage, selfie);
+            @RequestPart("selfieImage") MultipartFile selfie,
+            Authentication authentication) {
+        KycResponse response = kycSerciveImplementation.submitKyc(kycDataJson, frontImage, backImage, selfie,
+                authentication);
         return GlobalResponseHandler.success(
                 "KYC submitted successfully",
                 response,

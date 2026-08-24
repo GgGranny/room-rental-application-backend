@@ -26,4 +26,5 @@ public interface NotificationService {
 
     List<UserNotificationResponse> getNotifications(Users user);
     void markRead(Users user, String notificationId);
+    void markAllRead(Users user);
 }
