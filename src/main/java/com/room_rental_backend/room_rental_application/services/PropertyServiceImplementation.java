@@ -16,7 +16,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.PropertyRequest;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.PropertyDetailsResponseDto;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.PropertyResponseDto;
+import com.room_rental_backend.room_rental_application.enums.NotificationType;
 import com.room_rental_backend.room_rental_application.enums.PropertyStatus;
+import com.room_rental_backend.room_rental_application.interfaces.NotificationService;
 import com.room_rental_backend.room_rental_application.interfaces.PropertyService;
 import com.room_rental_backend.room_rental_application.interfaces.SupabaseFileStorageService;
 import com.room_rental_backend.room_rental_application.mappers.PropertyMapper;
@@ -46,6 +48,8 @@ public class PropertyServiceImplementation implements PropertyService {
     private final ImageMetadataRepository imageMetadataRepository;
 
     private final UserRepository userRepository;
+
+    private final NotificationService notificationService;
 
     @Value("${supabase.public-bucket-name}")
     private String publicBucket;
@@ -127,7 +131,21 @@ public class PropertyServiceImplementation implements PropertyService {
                 .orElseThrow(() -> new IllegalArgumentException("Invalid property status: " + status));
 
         property.setPropertyStatus(propertyStatus);
-        return propertyMapper.toPropertyResponseDto(propertyRepository.save(property));
+        Property saved = propertyRepository.save(property);
+
+        // Push: notify the owning landlord about the moderation decision.
+        Users owner = property.getLandlord() != null ? property.getLandlord().getUser() : null;
+        if (propertyStatus == PropertyStatus.ACTIVE) {
+            notificationService.sendToUser(owner, "Property Approved",
+                    "Your property \"" + property.getPropertyName() + "\" has been approved and is now live.",
+                    NotificationType.PROPERTY_APPROVED, property.getId());
+        } else if (propertyStatus == PropertyStatus.BLOCKED_BY_ADMIN) {
+            notificationService.sendToUser(owner, "Property Rejected",
+                    "Your property \"" + property.getPropertyName() + "\" was rejected by the admin.",
+                    NotificationType.PROPERTY_REJECTED, property.getId());
+        }
+
+        return propertyMapper.toPropertyResponseDto(saved);
     }
 
     @Transactional

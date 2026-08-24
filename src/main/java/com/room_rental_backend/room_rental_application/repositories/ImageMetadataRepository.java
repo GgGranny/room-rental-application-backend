@@ -19,6 +19,8 @@ public interface ImageMetadataRepository extends JpaRepository<ImageMetadata, Lo
     @Query("SELECT id FROM ImageMetadata data WHERE data.user.id = :userId AND data.metadataType = :type")
     List<Long> getAllKycMetadatasIds(String userId, ImageMetadataTypes type);
 
+    List<ImageMetadata> findAllByUserIdAndMetadataTypeAndUrlIn(String userId, ImageMetadataTypes type, List<String> urls);
+
     ImageMetadata findByUser(Users user);
 
     List<ImageMetadata> findAllByRoomIdAndMetadataTypeOrderByUploadedAtAsc(String roomId, ImageMetadataTypes type);

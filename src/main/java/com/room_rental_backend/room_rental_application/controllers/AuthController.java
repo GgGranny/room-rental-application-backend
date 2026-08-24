@@ -56,17 +56,12 @@ public class AuthController {
                         HttpServletResponse rs) {
                 AuthResponse response = authService.login(entity);
 
-                Cookie accessToken = httpCookieComponent.createCookie("accessToken", response.token(), accessTokenAge);
-                Cookie refreshToken = httpCookieComponent.createCookie("refreshToken", response.refreshToken(),
-                                refreshTokenAge);
-                rs.addCookie(accessToken);
-                rs.addCookie(refreshToken);
+                httpCookieComponent.addCookie(rs, "accessToken", response.token(), accessTokenAge);
+                httpCookieComponent.addCookie(rs, "refreshToken", response.refreshToken(), refreshTokenAge);
                 // A verified user can log in before completing role selection; do not fail that
                 // flow.
                 if (response.role() != null) {
-                        Cookie roleCookie = httpCookieComponent.createCookie("role", response.role().toString(),
-                                        accessTokenAge);
-                        rs.addCookie(roleCookie);
+                        httpCookieComponent.addCookie(rs, "role", response.role().toString(), accessTokenAge);
                 }
                 return GlobalResponseHandler.success(
                                 "Login Successful",
@@ -114,9 +109,7 @@ public class AuthController {
 
                 AuthResponse response = authService.refreshToken(refreshToken);
 
-                Cookie newAccessTokenCookie = httpCookieComponent.createCookie("accessToken", response.token(),
-                                accessTokenAge);
-                rs.addCookie(newAccessTokenCookie);
+                httpCookieComponent.addCookie(rs, "accessToken", response.token(), accessTokenAge);
                 return GlobalResponseHandler.success(
                                 "New Token Created Successfully",
                                 response,
@@ -128,11 +121,8 @@ public class AuthController {
                         @RequestBody CompleteUserProfileRequest request,
                         HttpServletResponse rs) {
                 AuthResponse response = authService.completeUserProfile(request);
-                Cookie accessToken = httpCookieComponent.createCookie("accessToken", response.token(), accessTokenAge);
-                Cookie refreshToken = httpCookieComponent.createCookie("refreshToken", response.refreshToken(),
-                                refreshTokenAge);
-                rs.addCookie(accessToken);
-                rs.addCookie(refreshToken);
+                httpCookieComponent.addCookie(rs, "accessToken", response.token(), accessTokenAge);
+                httpCookieComponent.addCookie(rs, "refreshToken", response.refreshToken(), refreshTokenAge);
                 return GlobalResponseHandler.success(
                                 "Setup successful",
                                 response,
@@ -173,12 +163,9 @@ public class AuthController {
         // cookies with an immediately-expiring cookie (maxAge = 0) to log the user out.
         @PostMapping("logout")
         public ResponseEntity<ApiResponse<Object>> logout(HttpServletResponse rs) {
-                Cookie accessToken = httpCookieComponent.createCookie("accessToken", "", 0);
-                Cookie refreshToken = httpCookieComponent.createCookie("refreshToken", "", 0);
-                Cookie roleCookie = httpCookieComponent.createCookie("role", "", 0);
-                rs.addCookie(accessToken);
-                rs.addCookie(refreshToken);
-                rs.addCookie(roleCookie);
+                httpCookieComponent.addCookie(rs, "accessToken", "", 0);
+                httpCookieComponent.addCookie(rs, "refreshToken", "", 0);
+                httpCookieComponent.addCookie(rs, "role", "", 0);
                 return GlobalResponseHandler.success(
                                 "Logout Successful",
                                 null,

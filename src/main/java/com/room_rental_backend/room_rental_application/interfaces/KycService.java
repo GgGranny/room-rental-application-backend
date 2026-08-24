@@ -10,7 +10,10 @@ import com.room_rental_backend.room_rental_application.dtos.responseDtos.KycResp
 
 public interface KycService {
 
-    KycResponse submitKyc(String kycData, MultipartFile frontImage, MultipartFile backImage, MultipartFile selfie);
+    // The KYC owner is always resolved from the authenticated principal;
+    // any customerId supplied by the client is ignored.
+    KycResponse submitKyc(String kycData, MultipartFile frontImage, MultipartFile backImage, MultipartFile selfie,
+            Authentication authentication);
 
     List<Map<String, Object>> fetchAllKycs();
 

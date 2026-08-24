@@ -4,9 +4,7 @@ public enum RomTypes {
     APARTMENT,
     HOUSE,
     HOSTEL,
-    STUDIO,
-    VILLA,
+    GARAGE,
     COMMERCIAL,
-    GUEST_HOUSE,
     OTHER
 }

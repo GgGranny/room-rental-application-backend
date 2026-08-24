@@ -24,7 +24,7 @@ public class AdminSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Value("${app.admin.email:admin@roomrental.com}")
+    @Value("${app.admin.email:admin@example.com}")
     private String adminEmail;
 
     @Value("${app.admin.password:Admin@123}")
@@ -36,8 +36,16 @@ public class AdminSeeder implements CommandLineRunner {
         if (email == null || email.isEmpty()) {
             return;
         }
-        if (userRepository.existsByEmail(email)) {
-            log.info("Admin account already present for {}, skipping seed", email);
+        Users existing = userRepository.findByEmail(email).orElse(null);
+        if (existing != null) {
+            // The configured bootstrap identity is always an active super admin.
+            // Its existing password hash is deliberately preserved on later starts.
+            boolean changed = existing.getRoles() != Roles.ROLE_ADMIN || !existing.isActive();
+            existing.setRoles(Roles.ROLE_ADMIN);
+            existing.setActive(true);
+            if (changed)
+                userRepository.save(existing);
+            log.info("Admin account already present for {}", email);
             return;
         }
 
@@ -45,6 +53,7 @@ public class AdminSeeder implements CommandLineRunner {
                 .email(email)
                 .password(passwordEncoder.encode(adminPassword))
                 .roles(Roles.ROLE_ADMIN)
+                .isActive(true)
                 .fname("System")
                 .lname("Admin")
                 .build();
