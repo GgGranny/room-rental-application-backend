@@ -293,15 +293,17 @@ public class KycSerciveImplementation implements KycService {
         kyc.setStatus(kycStatus);
         Kyc savedKyc = kycRepository.save(kyc);
 
-        // Push: notify the KYC owner about the admin's decision.
+        // Push: notify the KYC owner about the admin's decision. Sent only after
+        // the status change has been persisted; delivery is best-effort inside
+        // NotificationService and never rolls the update back.
         Users owner = savedKyc.getUser();
         if (kycStatus == KycStatus.APPROVED) {
-            notificationService.sendToUser(owner, "KYC Approved",
-                    "Your KYC verification has been approved. You can now post rooms.",
+            notificationService.sendToUser(owner, "KYC Verified",
+                    "Your KYC has been successfully verified.",
                     NotificationType.KYC_APPROVED, String.valueOf(savedKyc.getId()));
         } else if (kycStatus == KycStatus.REJECTED) {
-            notificationService.sendToUser(owner, "KYC Rejected",
-                    "Your KYC verification was rejected. Please resubmit with correct documents.",
+            notificationService.sendToUser(owner, "KYC Verification Rejected",
+                    "Your KYC verification was rejected. Please review the reason and resubmit.",
                     NotificationType.KYC_REJECTED, String.valueOf(savedKyc.getId()));
         }
 
