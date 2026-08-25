@@ -6,5 +6,6 @@ public enum RomTypes {
     HOSTEL,
     GARAGE,
     COMMERCIAL,
+    SHARED,
     OTHER
 }

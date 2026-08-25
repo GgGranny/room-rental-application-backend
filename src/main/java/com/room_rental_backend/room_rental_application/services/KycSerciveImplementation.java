@@ -303,7 +303,7 @@ public class KycSerciveImplementation implements KycService {
                     NotificationType.KYC_APPROVED, String.valueOf(savedKyc.getId()));
         } else if (kycStatus == KycStatus.REJECTED) {
             notificationService.sendToUser(owner, "KYC Verification Rejected",
-                    "Your KYC verification was rejected. Please review the reason and resubmit.",
+                    "Your KYC verification was rejected. Please review the reason and reapply.",
                     NotificationType.KYC_REJECTED, String.valueOf(savedKyc.getId()));
         }
 

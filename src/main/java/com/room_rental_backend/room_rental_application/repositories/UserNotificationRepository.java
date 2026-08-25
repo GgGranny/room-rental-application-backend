@@ -9,4 +9,6 @@ public interface UserNotificationRepository extends JpaRepository<UserNotificati
     List<UserNotification> findTop50ByUserOrderByCreatedAtDesc(Users user);
 
     List<UserNotification> findByUserAndReadFalse(Users user);
+
+    long countByUserAndReadFalse(Users user);
 }

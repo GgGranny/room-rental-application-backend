@@ -25,6 +25,7 @@ public interface NotificationService {
     void sendToToken(String token, String title, String body, NotificationType type, String referenceId);
 
     List<UserNotificationResponse> getNotifications(Users user);
+    long getUnreadCount(Users user);
     void markRead(Users user, String notificationId);
     void markAllRead(Users user);
 }

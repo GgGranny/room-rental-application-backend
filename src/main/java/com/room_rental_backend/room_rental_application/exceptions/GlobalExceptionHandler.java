@@ -108,6 +108,15 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiResponse<Object>> handleForbiddenException(ForbiddenException ex) {
+        logger.warn("{}", ex.getMessage());
+        return GlobalResponseHandler.error(
+                ex.getMessage(),
+                null,
+                HttpStatus.FORBIDDEN);
+    }
+
     @ExceptionHandler(FileUploadException.class)
     public ResponseEntity<ApiResponse<Object>> handleFileUploadException(FileUploadException ex) {
         logger.warn("{}", ex.getMessage());
