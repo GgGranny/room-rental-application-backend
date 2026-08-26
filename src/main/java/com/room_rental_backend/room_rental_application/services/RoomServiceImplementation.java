@@ -16,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.RoomRequest;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.ImageDataResponse;
+import com.room_rental_backend.room_rental_application.dtos.responseDtos.NearbyRoomResponse;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.RoomDetailsResponseDto;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.RoomResponseDto;
 import com.room_rental_backend.room_rental_application.enums.ImageMetadataTypes;
@@ -65,6 +66,8 @@ public class RoomServiceImplementation implements RoomService {
     private final LandlordRepository landlordRepository;
 
     private final KycRepository kycRepository;
+
+    private final com.room_rental_backend.room_rental_application.components.RoommateEventPublisher roommateEventPublisher;
 
     @Value("${supabase.public-bucket-name}")
     private String publicBucketName;
@@ -138,6 +141,13 @@ public class RoomServiceImplementation implements RoomService {
 
         room.setStatus(roomStatus);
         Room savedRoom = roomRepository.save(room);
+        // New API: real-time UI sync for open roommate maps when a SHARED room's
+        // availability changes. Security is still enforced by roommate endpoints.
+        if (savedRoom.getSharingType() == com.room_rental_backend.room_rental_application.enums.RoomType.SHARED) {
+            roommateEventPublisher.publish(savedRoom.getId(),
+                    com.room_rental_backend.room_rental_application.components.RoommateEventPublisher.ROOM_STATUS_CHANGED,
+                    null, savedRoom.getStatus().name());
+        }
         return roomMapper.toRoomDetailsResponseDto(savedRoom, getRoomImageResponses(savedRoom.getId()));
     }
 
@@ -186,6 +196,74 @@ public class RoomServiceImplementation implements RoomService {
                 .stream()
                 .map(room -> roomMapper.toRoomResponseDto(room, getRoomImageResponses(room.getId())))
                 .toList();
+    }
+
+    // New API: "Find Rooms Near You". Validates the incoming coordinates/radius,
+    // then delegates distance filtering to the database (Haversine query). Only
+    // AVAILABLE, non-deleted rooms with coordinates are returned, closest first.
+    // The searcher's coordinates are used only for the query and are never stored
+    // or returned in the response.
+    private static final double MAX_RADIUS_KM = 50.0;
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<NearbyRoomResponse> getNearbyRooms(double latitude, double longitude, double radiusKm) {
+        if (latitude < -90 || latitude > 90) {
+            throw new IllegalArgumentException("latitude must be between -90 and 90");
+        }
+        if (longitude < -180 || longitude > 180) {
+            throw new IllegalArgumentException("longitude must be between -180 and 180");
+        }
+        if (radiusKm <= 0) {
+            throw new IllegalArgumentException("radius must be greater than 0");
+        }
+        double effectiveRadius = Math.min(radiusKm, MAX_RADIUS_KM);
+
+        List<Object[]> rows = roomRepository.findNearbyAvailableRooms(latitude, longitude, effectiveRadius);
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+
+        // Preserve the DB ordering (closest first) while loading full room data.
+        List<String> orderedIds = new ArrayList<>();
+        java.util.Map<String, Double> distanceById = new java.util.HashMap<>();
+        for (Object[] row : rows) {
+            String id = (String) row[0];
+            double distance = ((Number) row[1]).doubleValue();
+            orderedIds.add(id);
+            distanceById.put(id, distance);
+        }
+
+        java.util.Map<String, Room> roomsById = roomRepository.findByIdIn(orderedIds).stream()
+                .collect(Collectors.toMap(Room::getId, room -> room));
+
+        return orderedIds.stream()
+                .map(roomsById::get)
+                .filter(java.util.Objects::nonNull)
+                .map(room -> toNearbyRoomResponse(room, distanceById.get(room.getId())))
+                .toList();
+    }
+
+    private NearbyRoomResponse toNearbyRoomResponse(Room room, Double distanceKm) {
+        Property property = room.getProperty();
+        return NearbyRoomResponse.builder()
+                .roomId(room.getId())
+                .roomTitle(room.getRoomTitle())
+                .description(room.getDescription())
+                .location(room.getLocation())
+                .price(room.getPrice())
+                .status(room.getStatus())
+                .roomType(room.getRoomType())
+                .sharingType(room.getSharingType())
+                .floorNumber(room.getFloorNumber())
+                .totalRooms(room.getTotalRooms())
+                .propertyId(property != null ? property.getId() : null)
+                .propertyName(property != null ? property.getPropertyName() : null)
+                .latitude(room.getLatitude())
+                .longitude(room.getLongitude())
+                .distanceKm(distanceKm == null ? null : Math.round(distanceKm * 100.0) / 100.0)
+                .imageUrls(getRoomImageResponses(room.getId()))
+                .build();
     }
 
     private Room findRoomById(String roomId) {

@@ -11,7 +11,9 @@ import com.room_rental_backend.room_rental_application.dtos.responseDtos.Viewing
 import com.room_rental_backend.room_rental_application.enums.KycStatus;
 import com.room_rental_backend.room_rental_application.enums.NotificationType;
 import com.room_rental_backend.room_rental_application.enums.Roles;
+import com.room_rental_backend.room_rental_application.enums.RoomStatus;
 import com.room_rental_backend.room_rental_application.enums.ScheduleStatus;
+import com.room_rental_backend.room_rental_application.exceptions.ConflictException;
 import com.room_rental_backend.room_rental_application.exceptions.ForbiddenException;
 import com.room_rental_backend.room_rental_application.exceptions.UnauthorizedException;
 import com.room_rental_backend.room_rental_application.exceptions.UserNotFoundException;
@@ -74,6 +76,14 @@ public class ViewingScheduleServiceImplementation implements ViewingScheduleServ
 
         Room room = roomRepository.findById(request.roomId())
                 .orElseThrow(() -> new IllegalArgumentException("Room not found for id: " + request.roomId()));
+
+        // Business rule (Find Rooms Near You / stale-map safety): a viewing can only
+        // be requested for a room that is currently AVAILABLE. This is re-checked
+        // from the database on every request, so a client holding stale map data for
+        // a room that has since become BOOKED/UNAVAILABLE cannot create a request.
+        if (room.getStatus() != RoomStatus.AVAILABLE) {
+            throw new ConflictException("This room is no longer available for viewing requests.");
+        }
 
         Property property = room.getProperty();
         if (property == null || property.getLandlord() == null) {

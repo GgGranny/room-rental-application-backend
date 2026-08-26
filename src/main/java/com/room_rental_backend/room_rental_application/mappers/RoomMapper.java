@@ -35,6 +35,7 @@ public class RoomMapper {
                 .facilities(cleanTextList(request.getFacilities()))
                 .rules(cleanTextList(request.getRules()))
                 .roomType(request.getRoomType())
+                .sharingType(request.getSharingType())
                 .floorNumber(request.getFloorNumber())
                 .totalRooms(request.getTotalRooms())
                 .address(request.getAddress())
@@ -52,6 +53,7 @@ public class RoomMapper {
         room.setStatus(request.getStatus() == null ? room.getStatus() : request.getStatus());
         room.setPreferredTenants(Optional.ofNullable(request.getPreferredTenants()).orElse(new ArrayList<>()));
         room.setRoomType(request.getRoomType());
+        room.setSharingType(request.getSharingType());
         room.setFloorNumber(request.getFloorNumber());
         room.setTotalRooms(request.getTotalRooms());
         room.setAddress(request.getAddress());
@@ -72,6 +74,7 @@ public class RoomMapper {
                 .status(room.getStatus())
                 .preferredTenants(Optional.ofNullable(room.getPreferredTenants()).orElse(new ArrayList<>()))
                 .roomType(room.getRoomType())
+                .sharingType(room.getSharingType())
                 .floorNumber(room.getFloorNumber())
                 .totalRooms(room.getTotalRooms())
                 .imageUrls(Optional.ofNullable(roomImageUrls).orElse(new ArrayList<>()))
@@ -96,6 +99,7 @@ public class RoomMapper {
                 .status(room.getStatus())
                 .preferredTenants(Optional.ofNullable(room.getPreferredTenants()).orElse(new ArrayList<>()))
                 .roomType(room.getRoomType())
+                .sharingType(room.getSharingType())
                 .floorNumber(room.getFloorNumber())
                 .totalRooms(room.getTotalRooms())
                 .imageUrls(Optional.ofNullable(roomImageUrls).orElse(new ArrayList<>()))

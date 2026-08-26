@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import com.room_rental_backend.room_rental_application.enums.RoomStatus;
+import com.room_rental_backend.room_rental_application.enums.RoomType;
 import com.room_rental_backend.room_rental_application.enums.TannentsPreferred;
 
 import jakarta.validation.constraints.NotBlank;
@@ -39,6 +40,9 @@ public class RoomRequest {
     private List<String> facilities;
 
     private String roomType;
+
+    // New API: strict PRIVATE/SHARED occupancy type powering the Roommate Finder.
+    private RoomType sharingType;
 
     private Integer floorNumber;
 

@@ -117,6 +117,16 @@ public class GlobalExceptionHandler {
                 HttpStatus.FORBIDDEN);
     }
 
+    // New API: concurrent roommate acceptance / stale room state -> HTTP 409.
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiResponse<Object>> handleConflictException(ConflictException ex) {
+        logger.warn("{}", ex.getMessage());
+        return GlobalResponseHandler.error(
+                ex.getMessage(),
+                null,
+                HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(FileUploadException.class)
     public ResponseEntity<ApiResponse<Object>> handleFileUploadException(FileUploadException ex) {
         logger.warn("{}", ex.getMessage());

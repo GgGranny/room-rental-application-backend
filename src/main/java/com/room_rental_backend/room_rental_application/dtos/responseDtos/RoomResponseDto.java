@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import com.room_rental_backend.room_rental_application.enums.RoomStatus;
+import com.room_rental_backend.room_rental_application.enums.RoomType;
 import com.room_rental_backend.room_rental_application.enums.TannentsPreferred;
 
 import lombok.Builder;
@@ -24,6 +25,7 @@ public class RoomResponseDto {
     private List<TannentsPreferred> preferredTenants;
 
     private String roomType;
+    private RoomType sharingType;
     private Integer floorNumber;
     private Integer totalRooms;
 

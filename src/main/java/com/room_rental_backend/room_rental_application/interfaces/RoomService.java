@@ -34,4 +34,9 @@ public interface RoomService {
 
     // Search Rooms
     List<RoomResponseDto> searchRooms(RoomSearchFilter filter);
+
+    // New API: rooms near a coordinate, within radiusKm, AVAILABLE only, closest
+    // first. Distance filtering happens in the database (see RoomRepository).
+    List<com.room_rental_backend.room_rental_application.dtos.responseDtos.NearbyRoomResponse> getNearbyRooms(
+            double latitude, double longitude, double radiusKm);
 }
