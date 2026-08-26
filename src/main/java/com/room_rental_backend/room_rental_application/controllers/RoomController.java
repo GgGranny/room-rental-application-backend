@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.room_rental_backend.room_rental_application.interfaces.RoomService;
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.RoomRequest;
+import com.room_rental_backend.room_rental_application.dtos.responseDtos.NearbyRoomResponse;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.RoomDetailsResponseDto;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.RoomResponseDto;
 import com.room_rental_backend.room_rental_application.models.filters.RoomSearchFilter;
@@ -95,6 +96,23 @@ public class RoomController {
                 List<RoomResponseDto> response = roomsService.searchRooms(filter);
                 return GlobalResponseHandler.success(
                                 "Rooms searched successfully",
+                                response,
+                                HttpStatus.OK);
+        }
+
+        // New API: "Find Rooms Near You" map search. Public (GET /api/v1/rooms/** is
+        // permitAll, like the rest of room browsing). Returns AVAILABLE rooms within
+        // {radius} km of the given coordinates, closest first. Distance filtering is
+        // done in the database (Haversine) — never in the frontend. The searcher's
+        // coordinates are only used to run the query; they are never persisted.
+        @GetMapping("/nearby")
+        public ResponseEntity<ApiResponse<List<NearbyRoomResponse>>> getNearbyRooms(
+                        @RequestParam("latitude") double latitude,
+                        @RequestParam("longitude") double longitude,
+                        @RequestParam(value = "radius", defaultValue = "5") double radius) {
+                List<NearbyRoomResponse> response = roomsService.getNearbyRooms(latitude, longitude, radius);
+                return GlobalResponseHandler.success(
+                                "Nearby rooms fetched successfully",
                                 response,
                                 HttpStatus.OK);
         }

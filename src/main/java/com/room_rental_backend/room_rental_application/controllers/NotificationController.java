@@ -69,6 +69,13 @@ public class NotificationController {
                 notificationService.getNotifications(resolveUser(authentication)), HttpStatus.OK);
     }
 
+    // New API: get the count of unread notifications for the authenticated user.
+    @GetMapping("/unread-count")
+    public ResponseEntity<ApiResponse<Long>> getUnreadCount(Authentication authentication) {
+        return GlobalResponseHandler.success("Unread count fetched successfully",
+                notificationService.getUnreadCount(resolveUser(authentication)), HttpStatus.OK);
+    }
+
     // New API: a user may only mark one of their own notifications as read.
     @PatchMapping("/{notificationId}/read")
     public ResponseEntity<ApiResponse<Void>> markRead(@PathVariable String notificationId, Authentication authentication) {

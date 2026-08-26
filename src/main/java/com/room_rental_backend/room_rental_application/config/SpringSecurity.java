@@ -56,6 +56,7 @@ public class SpringSecurity {
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(request -> request
                         .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/rooms/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
@@ -69,6 +70,7 @@ public class SpringSecurity {
                         .requestMatchers("/api/v1/property", "/api/v1/property/**").hasRole("LANDLORD")
                         .requestMatchers("/api/v1/landlord/**").hasRole("LANDLORD")
                         .requestMatchers("/api/v1/kyc/**").hasAnyRole("USER", "LANDLORD")
+                        .requestMatchers("/api/v1/roommates/**").hasRole("USER")
                         .anyRequest().authenticated())
 
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

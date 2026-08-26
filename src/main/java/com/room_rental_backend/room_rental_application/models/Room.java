@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.room_rental_backend.room_rental_application.enums.RoomStatus;
+import com.room_rental_backend.room_rental_application.enums.RoomType;
 import com.room_rental_backend.room_rental_application.enums.TannentsPreferred;
 import com.room_rental_backend.room_rental_application.models.base_entity.BaseEntity;
 
@@ -83,6 +84,12 @@ public class Room extends BaseEntity {
 
     @Column(name = "room_type", nullable = true, length = 50)
     private String roomType;
+
+    // New API: strict PRIVATE/SHARED occupancy type (distinct from the free-text
+    // room_type category). SHARED rooms enable the Roommate Finder.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sharing_type", nullable = true, length = 20)
+    private RoomType sharingType;
 
     @Column(name = "floor_number", nullable = true)
     private Integer floorNumber;

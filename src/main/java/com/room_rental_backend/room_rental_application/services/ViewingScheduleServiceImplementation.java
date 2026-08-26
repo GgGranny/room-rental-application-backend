@@ -8,18 +8,25 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.room_rental_backend.room_rental_application.dtos.requestDtos.ViewingScheduleRequest;
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.ViewingScheduleResponseDto;
+import com.room_rental_backend.room_rental_application.enums.KycStatus;
 import com.room_rental_backend.room_rental_application.enums.NotificationType;
+import com.room_rental_backend.room_rental_application.enums.Roles;
+import com.room_rental_backend.room_rental_application.enums.RoomStatus;
 import com.room_rental_backend.room_rental_application.enums.ScheduleStatus;
+import com.room_rental_backend.room_rental_application.exceptions.ConflictException;
+import com.room_rental_backend.room_rental_application.exceptions.ForbiddenException;
 import com.room_rental_backend.room_rental_application.exceptions.UnauthorizedException;
 import com.room_rental_backend.room_rental_application.exceptions.UserNotFoundException;
 import com.room_rental_backend.room_rental_application.interfaces.NotificationService;
 import com.room_rental_backend.room_rental_application.interfaces.ViewingScheduleService;
 import com.room_rental_backend.room_rental_application.mappers.ViewingScheduleMapper;
+import com.room_rental_backend.room_rental_application.models.Kyc;
 import com.room_rental_backend.room_rental_application.models.Landlord;
 import com.room_rental_backend.room_rental_application.models.Property;
 import com.room_rental_backend.room_rental_application.models.Room;
 import com.room_rental_backend.room_rental_application.models.Users;
 import com.room_rental_backend.room_rental_application.models.ViewingSchedule;
+import com.room_rental_backend.room_rental_application.repositories.KycRepository;
 import com.room_rental_backend.room_rental_application.repositories.RoomRepository;
 import com.room_rental_backend.room_rental_application.repositories.UserRepository;
 import com.room_rental_backend.room_rental_application.repositories.ViewingScheduleRepository;
@@ -39,6 +46,7 @@ public class ViewingScheduleServiceImplementation implements ViewingScheduleServ
     private final ViewingScheduleRepository scheduleRepository;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
+    private final KycRepository kycRepository;
     private final ViewingScheduleMapper scheduleMapper;
     private final NotificationService notificationService;
 
@@ -47,8 +55,35 @@ public class ViewingScheduleServiceImplementation implements ViewingScheduleServ
     public ViewingScheduleResponseDto createSchedule(ViewingScheduleRequest request, Authentication authentication) {
         Users tenant = resolveUser(authentication);
 
+        // Business rule: A user MUST have APPROVED KYC before scheduling a visit.
+        if (tenant.getRoles() != Roles.ROLE_ADMIN) {
+            KycStatus kycStatus = kycRepository.findByUserId(tenant.getId())
+                    .map(Kyc::getStatus)
+                    .orElse(null);
+            if (kycStatus == null) {
+                throw new ForbiddenException("KYC verification is required before scheduling a visit. Please complete your KYC.");
+            }
+            if (kycStatus == KycStatus.PENDING) {
+                throw new ForbiddenException("Your KYC is currently under review. You can schedule a visit after your KYC is approved.");
+            }
+            if (kycStatus == KycStatus.REJECTED) {
+                throw new ForbiddenException("Your KYC was rejected. Please resubmit your KYC before scheduling a visit.");
+            }
+            if (kycStatus != KycStatus.APPROVED) {
+                throw new ForbiddenException("KYC verification is required before scheduling a visit.");
+            }
+        }
+
         Room room = roomRepository.findById(request.roomId())
                 .orElseThrow(() -> new IllegalArgumentException("Room not found for id: " + request.roomId()));
+
+        // Business rule (Find Rooms Near You / stale-map safety): a viewing can only
+        // be requested for a room that is currently AVAILABLE. This is re-checked
+        // from the database on every request, so a client holding stale map data for
+        // a room that has since become BOOKED/UNAVAILABLE cannot create a request.
+        if (room.getStatus() != RoomStatus.AVAILABLE) {
+            throw new ConflictException("This room is no longer available for viewing requests.");
+        }
 
         Property property = room.getProperty();
         if (property == null || property.getLandlord() == null) {

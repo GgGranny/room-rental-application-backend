@@ -104,6 +104,11 @@ public class NotificationServiceImplementation implements NotificationService {
                 .toList();
     }
 
+    @Override
+    public long getUnreadCount(Users user) {
+        return userNotificationRepository.countByUserAndReadFalse(user);
+    }
+
     @Transactional
     @Override
     public void markRead(Users user, String notificationId) {

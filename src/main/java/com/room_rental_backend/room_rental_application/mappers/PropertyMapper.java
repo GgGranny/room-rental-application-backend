@@ -87,6 +87,7 @@ public class PropertyMapper {
                                                 .price(room.getPrice())
                                                 .status(room.getStatus())
                                                 .roomType(room.getRoomType())
+                                                .sharingType(room.getSharingType())
                                                 .floorNumber(room.getFloorNumber())
                                                 .totalRooms(room.getTotalRooms())
                                                 .imageUrls(imageMetadataRepository
