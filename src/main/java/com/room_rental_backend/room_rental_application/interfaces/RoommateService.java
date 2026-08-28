@@ -38,6 +38,12 @@ public interface RoommateService {
 
     List<RoommateRequestResponse> getReceivedRequests(org.springframework.security.core.Authentication authentication);
 
+    // The counterpart tenant's roommate profile (+ compatibility) for a request the
+    // authenticated user is a participant of. Powers the "click a request → view the
+    // tenant's details" step before accepting. Non-participants are rejected (403).
+    RoommateCandidateResponse getRequestCounterpartProfile(String requestId,
+            org.springframework.security.core.Authentication authentication);
+
     RoommateRequestResponse acceptRequest(String requestId, org.springframework.security.core.Authentication authentication);
 
     RoommateRequestResponse rejectRequest(String requestId, org.springframework.security.core.Authentication authentication);
