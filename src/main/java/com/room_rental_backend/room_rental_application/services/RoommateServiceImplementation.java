@@ -22,6 +22,7 @@ import com.room_rental_backend.room_rental_application.dtos.responseDtos.Roommat
 import com.room_rental_backend.room_rental_application.dtos.responseDtos.RoommateRequestResponse;
 import com.room_rental_backend.room_rental_application.enums.Cleanliness;
 import com.room_rental_backend.room_rental_application.enums.KycStatus;
+import com.room_rental_backend.room_rental_application.enums.MatchStatus;
 import com.room_rental_backend.room_rental_application.enums.NotificationType;
 import com.room_rental_backend.room_rental_application.enums.Roles;
 import com.room_rental_backend.room_rental_application.enums.RoomStatus;
@@ -34,15 +35,19 @@ import com.room_rental_backend.room_rental_application.exceptions.UnauthorizedEx
 import com.room_rental_backend.room_rental_application.exceptions.UserNotFoundException;
 import com.room_rental_backend.room_rental_application.interfaces.NotificationService;
 import com.room_rental_backend.room_rental_application.interfaces.RoommateService;
+import com.room_rental_backend.room_rental_application.models.Conversation;
 import com.room_rental_backend.room_rental_application.models.Kyc;
 import com.room_rental_backend.room_rental_application.models.Room;
 import com.room_rental_backend.room_rental_application.models.RoommateInterest;
+import com.room_rental_backend.room_rental_application.models.RoommateMatch;
 import com.room_rental_backend.room_rental_application.models.RoommateProfile;
 import com.room_rental_backend.room_rental_application.models.RoommateRequest;
 import com.room_rental_backend.room_rental_application.models.Users;
+import com.room_rental_backend.room_rental_application.repositories.ConversationRepository;
 import com.room_rental_backend.room_rental_application.repositories.KycRepository;
 import com.room_rental_backend.room_rental_application.repositories.RoomRepository;
 import com.room_rental_backend.room_rental_application.repositories.RoommateInterestRepository;
+import com.room_rental_backend.room_rental_application.repositories.RoommateMatchRepository;
 import com.room_rental_backend.room_rental_application.repositories.RoommateProfileRepository;
 import com.room_rental_backend.room_rental_application.repositories.RoommateRequestRepository;
 import com.room_rental_backend.room_rental_application.repositories.UserRepository;
@@ -67,6 +72,8 @@ public class RoommateServiceImplementation implements RoommateService {
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final KycRepository kycRepository;
+    private final RoommateMatchRepository matchRepository;
+    private final ConversationRepository conversationRepository;
     private final NotificationService notificationService;
     private final RoommateEventPublisher eventPublisher;
 
@@ -234,6 +241,32 @@ public class RoommateServiceImplementation implements RoommateService {
                 .toList();
     }
 
+    // "Click a request → view the tenant's details": returns the OTHER party's
+    // roommate profile relative to the viewer, with a compatibility score. Only a
+    // participant (requester or recipient) of the request may read it — anyone else
+    // gets 403. Exposes only the public roommate-matching fields (never phone,
+    // email, KYC or other private data), identical to what discovery already shows.
+    @Transactional(readOnly = true)
+    @Override
+    public RoommateCandidateResponse getRequestCounterpartProfile(String requestId, Authentication authentication) {
+        Users viewer = resolveUser(authentication);
+        RoommateRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Roommate request not found for id: " + requestId));
+
+        String requesterId = request.getRequester().getId();
+        String recipientId = request.getRecipient().getId();
+        if (!viewer.getId().equals(requesterId) && !viewer.getId().equals(recipientId)) {
+            throw new ForbiddenException("You are not a participant of this roommate request");
+        }
+
+        Users counterpart = viewer.getId().equals(requesterId) ? request.getRecipient() : request.getRequester();
+        RoommateProfile counterpartProfile = profileRepository.findByUser(counterpart).orElse(null);
+        RoommateProfile viewerProfile = profileRepository.findByUser(viewer).orElse(null);
+        return new RoommateCandidateResponse(
+                toProfileResponse(counterpart, counterpartProfile),
+                compatibilityScore(viewerProfile, counterpartProfile));
+    }
+
     // Acceptance is the critical race: A and C may both try to accept B's request.
     // Strategy: pessimistic lock on the request row, then the room row, inside one
     // transaction. The loser of the race sees a non-PENDING state and gets HTTP 409.
@@ -271,9 +304,34 @@ public class RoommateServiceImplementation implements RoommateService {
         roommateRequest.setStatus(RoommateRequestStatus.ACCEPTED);
         RoommateRequest saved = requestRepository.save(roommateRequest);
 
-        notificationService.sendToUser(saved.getRequester(), "Roommate Request Accepted",
+        // Persist the durable match + its private conversation INSIDE this locked
+        // transaction. The (requester, acceptor) pair is normalized (smaller UUID
+        // first) so the (room, tenant_one, tenant_two) unique constraint makes match
+        // creation idempotent and duplicate-proof under concurrent accepts.
+        Users requester = saved.getRequester();
+        Users tenantOne = requester.getId().compareTo(acceptor.getId()) <= 0 ? requester : acceptor;
+        Users tenantTwo = (tenantOne == requester) ? acceptor : requester;
+        RoommateMatch match = matchRepository
+                .findByRoomAndTenantOneAndTenantTwoAndStatus(room, tenantOne, tenantTwo, MatchStatus.ACTIVE)
+                .orElseGet(() -> matchRepository.save(RoommateMatch.builder()
+                        .room(room)
+                        .tenantOne(tenantOne)
+                        .tenantTwo(tenantTwo)
+                        .status(MatchStatus.ACTIVE)
+                        .sourceRequest(saved)
+                        .build()));
+        Conversation conversation = conversationRepository.findByMatch(match)
+                .orElseGet(() -> conversationRepository.save(Conversation.builder().match(match).build()));
+
+        // Requester is told their request was accepted; the acceptor gets a match
+        // notification. Together both tenants learn the private chat is available.
+        notificationService.sendToUser(requester, "Roommate Request Accepted",
                 displayName(acceptor) + " accepted your roommate request for \"" + room.getRoomTitle() + "\".",
                 NotificationType.ROOMMATE_REQUEST_ACCEPTED, saved.getId());
+        notificationService.sendToUser(acceptor, "New Roommate Match",
+                "You matched with " + displayName(requester) + " for \"" + room.getRoomTitle()
+                        + "\". You can now chat.",
+                NotificationType.ROOMMATE_MATCH_CREATED, conversation.getId());
 
         // Real-time sync AFTER commit: every open map drops this opportunity.
         eventPublisher.publish(room.getId(), RoommateEventPublisher.ROOMMATE_REQUEST_ACCEPTED,

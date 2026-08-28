@@ -133,6 +133,17 @@ public class RoommateController {
                 roommateService.getReceivedRequests(authentication), HttpStatus.OK);
     }
 
+    // Tenant: the counterpart tenant's roommate profile for a request I'm part of.
+    // Backs the "click a request → view the tenant's details" step before deciding.
+    // Only a participant may read it (service enforces 403 otherwise).
+    @GetMapping("/requests/{id}/profile")
+    public ResponseEntity<ApiResponse<RoommateCandidateResponse>> getRequestProfile(
+            @PathVariable("id") String id,
+            Authentication authentication) {
+        return GlobalResponseHandler.success("Roommate request profile fetched successfully",
+                roommateService.getRequestCounterpartProfile(id, authentication), HttpStatus.OK);
+    }
+
     // Recipient: accept a received pending request.
     @PatchMapping("/requests/{id}/accept")
     public ResponseEntity<ApiResponse<RoommateRequestResponse>> acceptRequest(

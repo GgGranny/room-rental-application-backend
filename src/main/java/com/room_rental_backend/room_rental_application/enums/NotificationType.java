@@ -16,7 +16,11 @@ public enum NotificationType {
     PAYMENT_FAILED("OPEN_PAYMENT"),
     ROOMMATE_REQUEST("OPEN_ROOMMATE"),
     ROOMMATE_REQUEST_ACCEPTED("OPEN_ROOMMATE"),
-    ROOMMATE_REQUEST_REJECTED("OPEN_ROOMMATE");
+    ROOMMATE_REQUEST_REJECTED("OPEN_ROOMMATE"),
+    // A roommate match was created (chat is now available).
+    ROOMMATE_MATCH_CREATED("OPEN_CHAT"),
+    // A new private chat message was received.
+    NEW_MESSAGE("OPEN_CHAT");
 
     private final String action;
 
