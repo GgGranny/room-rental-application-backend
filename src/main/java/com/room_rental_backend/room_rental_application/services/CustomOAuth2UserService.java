@@ -52,14 +52,15 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private Users registerNewUser(String provider, OAuth2UserInfo userInfo) {
 
-        Users user = Users.builder()
-                .email(userInfo.getEmail())
-                .profilePictureUrl(userInfo.getImageUrl())
-                .provider(provider)
-                .providerId(userInfo.getId())
-                .verified(false)
-                .isActive(true)
-                .build();
+Users user = Users.builder()
+                 .email(userInfo.getEmail())
+                 .profilePictureUrl(userInfo.getImageUrl())
+                 .provider(provider)
+                 .providerId(userInfo.getId())
+                 .verified(false)
+                 .isActive(true)
+                 .roles(com.room_rental_backend.room_rental_application.enums.Roles.ROLE_USER)
+                 .build();
 
         return userRepository.save(user);
     }
