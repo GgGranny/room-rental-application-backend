@@ -74,11 +74,11 @@ public class Users extends BaseEntity implements UserDetails {
 
     @Builder.Default
     @Column(name = "is_verified", nullable = false)
-    private boolean verified = true;
+    private boolean verified = false;
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default
-    private boolean isActive = true; // for develepment purpose only true
+    private boolean isActive = false; // Users must verify email before activation
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private Landlord landlord;

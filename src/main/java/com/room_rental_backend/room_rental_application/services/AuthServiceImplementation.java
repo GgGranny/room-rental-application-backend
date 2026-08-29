@@ -137,6 +137,7 @@ public class AuthServiceImplementation implements AuthService {
 
         try {
             notActivatedUser.setActive(true);
+            notActivatedUser.setVerified(true);
             Users activatedUser = userRepository.save(notActivatedUser);
             // delete the token after the activation
             activationTokenRepository.delete(savedToken);
