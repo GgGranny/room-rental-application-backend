@@ -120,13 +120,17 @@ public class AuthController {
         public ResponseEntity<ApiResponse<AuthResponse>> completeUserProfile(
                         @RequestBody CompleteUserProfileRequest request,
                         HttpServletResponse rs) {
-                AuthResponse response = authService.completeUserProfile(request);
-                httpCookieComponent.addCookie(rs, "accessToken", response.token(), accessTokenAge);
-                httpCookieComponent.addCookie(rs, "refreshToken", response.refreshToken(), refreshTokenAge);
-                return GlobalResponseHandler.success(
-                                "Setup successful",
-                                response,
-                                HttpStatus.OK);
+        AuthResponse response = authService.completeUserProfile(request);
+        httpCookieComponent.addCookie(rs, "accessToken", response.token(), accessTokenAge);
+        httpCookieComponent.addCookie(rs, "refreshToken", response.refreshToken(), refreshTokenAge);
+        // Ensure the role cookie reflects the newly assigned role
+        if (response.role() != null) {
+            httpCookieComponent.addCookie(rs, "role", response.role().toString(), accessTokenAge);
+        }
+        return GlobalResponseHandler.success(
+                        "Setup successful",
+                        response,
+                        HttpStatus.OK);
         }
 
         @GetMapping("is-profile-complete")

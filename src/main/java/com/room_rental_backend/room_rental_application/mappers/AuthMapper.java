@@ -36,6 +36,9 @@ public class AuthMapper {
         Users user = new Users();
         user.setEmail(requestDtos.email().trim().toLowerCase());
         user.setPassword(passwordEncoder.encode(requestDtos.password()));
+        // New users must verify email before activation
+        user.setVerified(false);
+        user.setActive(false);
         return user;
     }
 
