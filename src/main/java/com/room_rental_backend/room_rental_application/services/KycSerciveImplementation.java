@@ -121,11 +121,12 @@ public class KycSerciveImplementation implements KycService {
 
         // Upload the replacement documents first so a failed upload can never
         // leave the existing submission broken or without its stored files.
-        String frontImageUrl = supabaseFileStorageService.uploadFile(frontImage, "kyc", "private", "KYC").getUrl();
+        String folder = "documents/" + kycOwner.getId();
+        String frontImageUrl = supabaseFileStorageService.uploadFile(frontImage, folder, "public", "KYC").getUrl();
         String backImageUrl = backImage != null && !backImage.isEmpty()
-                ? supabaseFileStorageService.uploadFile(backImage, "kyc", "private", "KYC").getUrl()
+                ? supabaseFileStorageService.uploadFile(backImage, folder, "public", "KYC").getUrl()
                 : null;
-        String selfieUrl = supabaseFileStorageService.uploadFile(selfie, "kyc", "private", "KYC").getUrl();
+        String selfieUrl = supabaseFileStorageService.uploadFile(selfie, folder, "public", "KYC").getUrl();
 
         DocumentDataReqeust documentDataReqeust = DocumentDataReqeust.builder()
                 .documentType(kycData.getDocument().getDocumentType())
@@ -175,7 +176,7 @@ public class KycSerciveImplementation implements KycService {
         }
         try {
             imageMetadataRepository.findAllByUserIdAndMetadataTypeAndUrlIn(userId, ImageMetadataTypes.KYC, replacedUrls)
-                    .forEach(metadata -> supabaseFileStorageService.deleteFile(metadata.getId(), "private"));
+                    .forEach(metadata -> supabaseFileStorageService.deleteFile(metadata.getId(), "public"));
         } catch (RuntimeException ex) {
             log.warn("Failed to clean up replaced KYC documents for user {}", userId, ex);
         }
@@ -239,7 +240,7 @@ public class KycSerciveImplementation implements KycService {
         }
         List<Long> kycMetadataIds = imageMetadataRepository.getAllKycMetadatasIds(kyc.getUser().getId(),
                 ImageMetadataTypes.KYC);
-        kycMetadataIds.forEach(id -> supabaseFileStorageService.deleteFile(id, "private"));
+        kycMetadataIds.forEach(id -> supabaseFileStorageService.deleteFile(id, "public"));
         // Stream.of(
         // kyc.getFrontImageUrl(),
         // kyc.getBackImageUrl(),
